@@ -22,6 +22,7 @@ class User(Base):
     concision_pref: Mapped[str] = mapped_column(String(20), nullable=False, default="brief")
     event_radius_miles: Mapped[int] = mapped_column(Integer, nullable=False, default=15)
     personality_type: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    dating_preference: Mapped[str | None] = mapped_column(String(40), nullable=True)
     onboarding_token: Mapped[str] = mapped_column(String(128), unique=True, nullable=False, index=True)
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at: Mapped[DateTime] = mapped_column(

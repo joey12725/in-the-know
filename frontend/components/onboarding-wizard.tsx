@@ -15,6 +15,7 @@ type SignupPayload = {
   hobbies_raw_text: string;
   goals_raw_text: string;
   goal_types: string[];
+  dating_preference: "date_night_spots" | "meeting_people" | "both" | null;
   personality_type: string | null;
 };
 
@@ -38,6 +39,27 @@ type OnboardingWizardProps = {
 const stepNames = ["name-location", "hobbies", "goals", "preferences", "integrations", "confirmation"];
 
 const goalOptions = ["dating", "friends", "charity", "community", "hobby-growth", "music-discovery"];
+const datingPreferenceOptions: Array<{
+  value: "date_night_spots" | "meeting_people" | "both";
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "date_night_spots",
+    label: "Date night spots",
+    description: "Restaurants, activities, and experiences for couples.",
+  },
+  {
+    value: "meeting_people",
+    label: "Meeting people",
+    description: "Singles events, social mixers, and community spaces to meet people.",
+  },
+  {
+    value: "both",
+    label: "Both",
+    description: "Mix date-night recommendations with social events to meet people.",
+  },
+];
 const placesApiKey = process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY ?? "";
 const processingStages = [
   "Analyzing your interests...",
@@ -101,6 +123,7 @@ export default function OnboardingWizard({
   const [city, setCity] = useState("");
   const [hobbies, setHobbies] = useState("");
   const [goalTypes, setGoalTypes] = useState<string[]>([]);
+  const [datingPreference, setDatingPreference] = useState<"date_night_spots" | "meeting_people" | "both" | null>(null);
   const [goalText, setGoalText] = useState("");
   const [lat, setLat] = useState<number | null>(null);
   const [lng, setLng] = useState<number | null>(null);
@@ -247,9 +270,16 @@ export default function OnboardingWizard({
   const isPilotCity = (value: string) => pilotCities.has(normalizeCity(value));
 
   const toggleGoal = (goal: string) => {
-    setGoalTypes((current) =>
-      current.includes(goal) ? current.filter((entry) => entry !== goal) : [...current, goal]
-    );
+    setGoalTypes((current) => {
+      if (current.includes(goal)) {
+        const updated = current.filter((entry) => entry !== goal);
+        if (goal === "dating") {
+          setDatingPreference(null);
+        }
+        return updated;
+      }
+      return [...current, goal];
+    });
   };
 
   const runProcessingAnimation = async () => {
@@ -311,6 +341,7 @@ export default function OnboardingWizard({
       hobbies_raw_text: hobbies,
       goals_raw_text: goalText,
       goal_types: goalTypes,
+      dating_preference: datingPreference,
       personality_type: null,
     };
 
@@ -387,6 +418,11 @@ export default function OnboardingWizard({
 
     if (stepIndex === 1 && hobbies.trim().length < 8) {
       setError("Add a bit more detail so ITK can understand your interests.");
+      return;
+    }
+
+    if (stepIndex === 2 && goalTypes.includes("dating") && !datingPreference) {
+      setError("Pick what you mean by dating so ITK can tailor recommendations correctly.");
       return;
     }
 
@@ -572,6 +608,28 @@ export default function OnboardingWizard({
                     </button>
                   ))}
                 </div>
+                {goalTypes.includes("dating") && (
+                  <div className="dating-followup">
+                    <h3>When you say dating, which one do you want?</h3>
+                    <div className="goal-grid">
+                      {datingPreferenceOptions.map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          className={datingPreference === option.value ? "goal-chip active" : "goal-chip"}
+                          onClick={() => setDatingPreference(option.value)}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="status-line">
+                      {datingPreference
+                        ? datingPreferenceOptions.find((option) => option.value === datingPreference)?.description
+                        : "Choose one so ITK can separate date-night ideas from meet-people recommendations."}
+                    </p>
+                  </div>
+                )}
                 <label>
                   Anything else you want ITK to optimize for?
                   <textarea

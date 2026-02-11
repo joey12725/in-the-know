@@ -212,7 +212,7 @@ def _collect_recent_feedback_context(db: Session, user_id: UUID) -> list[str]:
 
 def _derive_dating_preference(user: User, goals_raw_text: str, goal_types: list[str]) -> str:
     explicit_pref = str(getattr(user, "dating_preference", "") or "").strip().lower()
-    if explicit_pref in {"date_night", "meeting_people", "both"}:
+    if explicit_pref in {"date_night_spots", "meeting_people", "both"}:
         return explicit_pref
 
     has_dating_goal = any("dating" in str(goal).lower() for goal in goal_types)
@@ -223,7 +223,7 @@ def _derive_dating_preference(user: User, goals_raw_text: str, goal_types: list[
     if any(term in haystack for term in ("meet people", "singles", "speed dating", "mixer")):
         return "meeting_people"
     if any(term in haystack for term in ("partner", "boyfriend", "girlfriend", "wife", "husband", "date night")):
-        return "date_night"
+        return "date_night_spots"
     return "both"
 
 
@@ -258,7 +258,7 @@ def _generate_newsletter_copy(
         f"Spotify context: {music_context}\n"
         f"Calendar busy windows: {busy_windows}\n"
     )
-    result = openrouter_client.chat(
+    result = openrouter_client.write(
         prompt=prompt,
         system_prompt="You are ITK's newsletter copywriter. Return strict minified JSON only.",
     )

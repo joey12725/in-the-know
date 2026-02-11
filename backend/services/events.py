@@ -34,7 +34,7 @@ def search_events_for_pair(db: Session, pair: HobbyCityPair) -> list[dict]:
         "name,date,location,why,url for this hobby/city: "
         f"{hobby} in {city}. Keep concise."
     )
-    result = openrouter_client.chat(prompt=prompt, system_prompt="Return strict JSON only.")
+    result = openrouter_client.search(prompt=prompt, system_prompt="Return strict JSON only. Include real URLs.")
 
     events: list[dict]
     try:

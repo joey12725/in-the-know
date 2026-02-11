@@ -22,6 +22,7 @@ class SignupRequest(BaseModel):
     hobbies_raw_text: str = Field(min_length=5, max_length=4000)
     goals_raw_text: str = Field(default="", max_length=4000)
     goal_types: list[str] = Field(default_factory=list)
+    dating_preference: Literal["date_night_spots", "meeting_people", "both"] | None = None
     personality_type: str | None = Field(default=None, max_length=10)
 
     @field_validator("name", "address", "city", "hobbies_raw_text", "goals_raw_text", mode="before")
