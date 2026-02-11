@@ -1,6 +1,4 @@
-from __future__ import annotations
-
-from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -45,7 +43,7 @@ def issue_csrf_token(response: Response) -> dict:
 
 @router.post("/signup", response_model=SignupResponse)
 @limiter.limit(settings.rate_limit_signup)
-def signup(request: Request, response: Response, payload: SignupRequest = Body(...), db: Session = Depends(get_db)) -> SignupResponse:
+def signup(request: Request, response: Response, payload: SignupRequest, db: Session = Depends(get_db)) -> SignupResponse:
     ensure_csrf(request)
 
     existing_user = db.scalar(select(User).where(User.email == payload.email.lower()))
