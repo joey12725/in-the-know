@@ -15,6 +15,7 @@ npm run lint
 
 - `BACKEND_API_URL`: FastAPI origin (used by route-handler proxy)
 - `NEXT_PUBLIC_APP_URL`: public app URL for links/callback flow
+- `NEXT_PUBLIC_GOOGLE_PLACES_API_KEY`: browser API key for onboarding address autocomplete
 
 ## Key routes
 

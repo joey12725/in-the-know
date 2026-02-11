@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type SignupPayload = {
   name: string;
@@ -33,6 +33,49 @@ type OnboardingWizardProps = {
 const stepNames = ["name-location", "hobbies", "goals", "preferences", "integrations", "confirmation"];
 
 const goalOptions = ["dating", "friends", "charity", "community", "hobby-growth", "music-discovery"];
+const placesApiKey = process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY ?? "";
+
+type GoogleAddressComponent = {
+  long_name: string;
+  short_name: string;
+  types: string[];
+};
+
+type GooglePlaceResult = {
+  address_components?: GoogleAddressComponent[];
+  formatted_address?: string;
+  geometry?: {
+    location?: {
+      lat: () => number;
+      lng: () => number;
+    };
+  };
+};
+
+type GoogleAutocompleteInstance = {
+  addListener: (eventName: "place_changed", handler: () => void) => void;
+  getPlace: () => GooglePlaceResult;
+};
+
+type GoogleMapsWindow = Window & {
+  google?: {
+    maps?: {
+      LatLng: new (lat: number, lng: number) => unknown;
+      LatLngBounds: new (sw: unknown, ne: unknown) => unknown;
+      places?: {
+        Autocomplete: new (
+          input: HTMLInputElement,
+          options: {
+            types: string[];
+            componentRestrictions: { country: string };
+            fields: string[];
+            bounds: unknown;
+          }
+        ) => GoogleAutocompleteInstance;
+      };
+    };
+  };
+};
 
 export default function OnboardingWizard({
   initialEmail,
@@ -48,6 +91,9 @@ export default function OnboardingWizard({
   const [hobbies, setHobbies] = useState("");
   const [goalTypes, setGoalTypes] = useState<string[]>([]);
   const [goalText, setGoalText] = useState("");
+  const [lat, setLat] = useState<number | null>(null);
+  const [lng, setLng] = useState<number | null>(null);
+  const [placesReady, setPlacesReady] = useState(false);
   const [concision, setConcision] = useState(40);
   const [radius, setRadius] = useState(20);
   const [token, setToken] = useState(initialToken);
@@ -55,6 +101,8 @@ export default function OnboardingWizard({
   const [csrfToken, setCsrfToken] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const addressInputRef = useRef<HTMLInputElement | null>(null);
+  const placesAutocompleteRef = useRef<GoogleAutocompleteInstance | null>(null);
 
   useEffect(() => {
     const getCsrf = async () => {
@@ -66,6 +114,89 @@ export default function OnboardingWizard({
       setCsrfToken(data.csrf_token);
     };
     void getCsrf();
+  }, []);
+
+  useEffect(() => {
+    if (!placesApiKey || !addressInputRef.current) {
+      return;
+    }
+
+    const getCityFromComponents = (components: GoogleAddressComponent[] = []) => {
+      const locality = components.find((entry) => entry.types.includes("locality"))?.long_name;
+      if (locality) {
+        return locality;
+      }
+      const sublocality = components.find((entry) => entry.types.includes("sublocality"))?.long_name;
+      if (sublocality) {
+        return sublocality;
+      }
+      const county = components.find((entry) => entry.types.includes("administrative_area_level_2"))?.long_name;
+      return county?.replace(/ County$/i, "") ?? "";
+    };
+
+    const initializeAutocomplete = () => {
+      const googleMaps = (window as GoogleMapsWindow).google;
+      if (!googleMaps?.maps?.places || !addressInputRef.current || placesAutocompleteRef.current) {
+        return;
+      }
+
+      const bounds = new googleMaps.maps.LatLngBounds(
+        new googleMaps.maps.LatLng(29.02, -99.75),
+        new googleMaps.maps.LatLng(30.91, -97.02)
+      );
+
+      const autocomplete = new googleMaps.maps.places.Autocomplete(addressInputRef.current, {
+        types: ["address"],
+        componentRestrictions: { country: "us" },
+        fields: ["address_components", "formatted_address", "geometry"],
+        bounds,
+      });
+
+      autocomplete.addListener("place_changed", () => {
+        const place = autocomplete.getPlace() as GooglePlaceResult;
+        if (place.formatted_address) {
+          setAddress(place.formatted_address);
+        }
+        if (place.address_components) {
+          const derivedCity = getCityFromComponents(place.address_components);
+          if (derivedCity) {
+            setCity(derivedCity);
+          }
+        }
+        const selectedLat = place.geometry?.location?.lat();
+        const selectedLng = place.geometry?.location?.lng();
+        setLat(typeof selectedLat === "number" ? selectedLat : null);
+        setLng(typeof selectedLng === "number" ? selectedLng : null);
+      });
+
+      placesAutocompleteRef.current = autocomplete;
+      setPlacesReady(true);
+    };
+
+    const existingScript = document.getElementById("google-places-script") as HTMLScriptElement | null;
+    if ((window as GoogleMapsWindow).google?.maps?.places) {
+      initializeAutocomplete();
+      return;
+    }
+
+    if (!existingScript) {
+      const script = document.createElement("script");
+      script.id = "google-places-script";
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(placesApiKey)}&libraries=places`;
+      script.async = true;
+      script.defer = true;
+      script.addEventListener("load", initializeAutocomplete);
+      document.head.appendChild(script);
+
+      return () => {
+        script.removeEventListener("load", initializeAutocomplete);
+      };
+    }
+
+    existingScript.addEventListener("load", initializeAutocomplete);
+    return () => {
+      existingScript.removeEventListener("load", initializeAutocomplete);
+    };
   }, []);
 
   const completionPercent = useMemo(() => Math.round(((stepIndex + 1) / stepNames.length) * 100), [stepIndex]);
@@ -82,8 +213,8 @@ export default function OnboardingWizard({
       email,
       address,
       city,
-      lat: null,
-      lng: null,
+      lat,
+      lng,
       concision_pref: concision >= 50 ? "detailed" : "brief",
       event_radius_miles: radius,
       hobbies_raw_text: hobbies,
@@ -211,12 +342,24 @@ export default function OnboardingWizard({
             <label>
               Full address
               <input
+                ref={addressInputRef}
                 value={address}
-                onChange={(event) => setAddress(event.target.value)}
+                onChange={(event) => {
+                  setAddress(event.target.value);
+                  setLat(null);
+                  setLng(null);
+                }}
                 placeholder="Street + city + state"
                 required
               />
             </label>
+            {placesApiKey && (
+              <p className="status-line">
+                {placesReady
+                  ? "Address autocomplete is on. Pick a suggestion to auto-fill city."
+                  : "Loading address autocomplete..."}
+              </p>
+            )}
             <label>
               City
               <input value={city} onChange={(event) => setCity(event.target.value)} required />
