@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     spotify_client_secret: str | None = Field(default=None, alias="SPOTIFY_CLIENT_SECRET")
 
     resend_api_key: str | None = Field(default=None, alias="RESEND_API_KEY")
-    resend_from_email: str = "ITK <hello@itk.so>"
+    resend_from_email: str = Field(default="ITK <onboarding@resend.dev>", alias="RESEND_FROM_EMAIL")
 
     session_secret: str = "change-me"
     token_encryption_key: str | None = None
