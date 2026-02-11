@@ -222,7 +222,13 @@ export default function OnboardingWizard({
   const completionPercent = useMemo(() => Math.round(((stepIndex + 1) / stepNames.length) * 100), [stepIndex]);
 
   const normalizeCity = (value: string) => {
-    let trimmed = " ".join(value.trim().toLowerCase().replaceAll(".", "").split());
+    let trimmed = value
+      .trim()
+      .toLowerCase()
+      .replaceAll(".", "")
+      .split(/\s+/)
+      .filter(Boolean)
+      .join(" ");
     if (trimmed.includes(",")) {
       [trimmed] = trimmed.split(",", 1);
     }
