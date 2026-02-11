@@ -7,7 +7,7 @@ from slowapi.errors import RateLimitExceeded
 
 from core.config import get_settings
 from core.rate_limit import limiter
-from routes import health_router, meta_router, oauth_router, pipeline_router, public_router
+from routes import email_reply_router, health_router, meta_router, oauth_router, pipeline_router, public_router
 
 settings = get_settings()
 
@@ -39,6 +39,7 @@ app.include_router(public_router)
 app.include_router(oauth_router)
 app.include_router(pipeline_router)
 app.include_router(meta_router)
+app.include_router(email_reply_router)
 
 
 @app.get("/")

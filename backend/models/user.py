@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import DateTime, Float, Integer, String, func
+from sqlalchemy import Boolean, DateTime, Float, Integer, String, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -21,6 +21,7 @@ class User(Base):
     lng: Mapped[float | None] = mapped_column(Float, nullable=True)
     concision_pref: Mapped[str] = mapped_column(String(20), nullable=False, default="brief")
     event_radius_miles: Mapped[int] = mapped_column(Integer, nullable=False, default=15)
+    is_subscribed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
     personality_type: Mapped[str | None] = mapped_column(String(10), nullable=True)
     dating_preference: Mapped[str | None] = mapped_column(String(40), nullable=True)
     onboarding_token: Mapped[str] = mapped_column(String(128), unique=True, nullable=False, index=True)

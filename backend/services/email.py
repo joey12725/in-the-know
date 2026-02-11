@@ -28,6 +28,24 @@ def _extract_email_address(value: str) -> str:
     return value.strip()
 
 
+def _build_reply_to_address(newsletter_id: UUID) -> str | None:
+    settings = get_settings()
+    base = (settings.resend_reply_to_email or "").strip()
+    if "@" not in base:
+        return None
+
+    local_part, domain = base.split("@", 1)
+    local_part = local_part.strip().strip('"')
+    domain = domain.strip()
+    if not local_part or not domain:
+        return None
+
+    token_local = f"{local_part}+{newsletter_id}"
+    if len(token_local) > 64:
+        return None
+    return f"{token_local}@{domain}"
+
+
 def _truncate(value: str, limit: int) -> str:
     cleaned = " ".join(value.split())
     if len(cleaned) <= limit:
@@ -493,7 +511,7 @@ def draft_newsletter_for_user(db: Session, user: User) -> Newsletter:
 
 
 def draft_newsletters(db: Session, user_id: UUID | None = None) -> int:
-    query = select(User)
+    query = select(User).where(User.is_subscribed.is_(True))
     if user_id:
         query = query.where(User.id == user_id)
     users = db.scalars(query).all()
@@ -502,21 +520,25 @@ def draft_newsletters(db: Session, user_id: UUID | None = None) -> int:
     return len(users)
 
 
-def _send_email_via_resend(to_email: str, subject: str, html_content: str) -> None:
+def _send_email_via_resend(to_email: str, subject: str, html_content: str, reply_to: str | None = None) -> None:
     settings = get_settings()
     if not settings.resend_api_key:
         return
+
+    payload: dict[str, object] = {
+        "from": settings.resend_from_email,
+        "to": [to_email],
+        "subject": subject,
+        "html": html_content,
+    }
+    if reply_to:
+        payload["reply_to"] = [reply_to]
 
     with httpx.Client(timeout=20) as client:
         response = client.post(
             "https://api.resend.com/emails",
             headers={"Authorization": f"Bearer {settings.resend_api_key}", "Content-Type": "application/json"},
-            json={
-                "from": settings.resend_from_email,
-                "to": [to_email],
-                "subject": subject,
-                "html": html_content,
-            },
+            json=payload,
         )
         response.raise_for_status()
 
@@ -530,9 +552,10 @@ def send_newsletters(db: Session, user_id: UUID | None = None) -> int:
     sent_count = 0
     for newsletter in newsletters:
         user = db.get(User, newsletter.user_id)
-        if not user:
+        if not user or not user.is_subscribed:
             continue
-        _send_email_via_resend(user.email, newsletter.subject, newsletter.html_content)
+        reply_to = _build_reply_to_address(newsletter.id)
+        _send_email_via_resend(user.email, newsletter.subject, newsletter.html_content, reply_to=reply_to)
         newsletter.sent_at = datetime.now(tz=timezone.utc)
         sent_count += 1
 

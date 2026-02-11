@@ -84,6 +84,7 @@ def signup(request: Request, response: Response, payload: SignupRequest, db: Ses
         user.lng = payload.lng
         user.concision_pref = payload.concision_pref
         user.event_radius_miles = payload.event_radius_miles
+        user.is_subscribed = True
         user.personality_type = payload.personality_type
         user.dating_preference = payload.dating_preference
         user.onboarding_token = onboarding_token
@@ -97,6 +98,7 @@ def signup(request: Request, response: Response, payload: SignupRequest, db: Ses
             lng=payload.lng,
             concision_pref=payload.concision_pref,
             event_radius_miles=payload.event_radius_miles,
+            is_subscribed=True,
             personality_type=payload.personality_type,
             dating_preference=payload.dating_preference,
             onboarding_token=onboarding_token,

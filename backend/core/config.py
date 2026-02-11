@@ -37,6 +37,8 @@ class Settings(BaseSettings):
 
     resend_api_key: str | None = Field(default=None, alias="RESEND_API_KEY")
     resend_from_email: str = Field(default="ITK <onboarding@resend.dev>", alias="RESEND_FROM_EMAIL")
+    resend_reply_to_email: str | None = Field(default=None, alias="RESEND_REPLY_TO_EMAIL")
+    resend_inbound_webhook_secret: str | None = Field(default=None, alias="RESEND_INBOUND_WEBHOOK_SECRET")
 
     session_secret: str = "change-me"
     token_encryption_key: str | None = None

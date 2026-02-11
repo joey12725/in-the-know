@@ -11,7 +11,8 @@ AI-powered hyper-personalized local events newsletter.
 - FastAPI backend (`backend/`)
   - Public endpoints: signup, onboarding status, onboarding step completion
   - OAuth endpoints: Google Calendar + Spotify initiation/callback
-  - Pipeline endpoints: run, parse hobbies, search events, draft emails, send emails
+  - Pipeline endpoints: run, parse hobbies, search events, discover venues, search venue events, draft emails, send emails
+  - Webhook endpoint: `POST /api/webhooks/email-reply` for inbound Resend replies
   - Meta webhook stub
 - Neon/Postgres schema + Alembic migration
   - All required tables from spec
@@ -81,6 +82,12 @@ POST /api/pipeline/run?secret=<API_CRON_SECRET>
 ```
 
 If scheduled on frontend, it will proxy to backend through `BACKEND_API_URL`.
+
+## Resend inbound replies
+
+- Configure `RESEND_REPLY_TO_EMAIL` to a mailbox on your verified domain, for example `reply@itk.so`.
+- Configure `RESEND_INBOUND_WEBHOOK_SECRET` and pass that same value in webhook headers.
+- `onboarding@resend.dev` is fine for outbound testing, but inbound reply routing requires a verified custom domain.
 
 ## Notes
 

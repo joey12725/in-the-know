@@ -2,6 +2,7 @@ from models.city_venue import CityVenue
 from models.hobby_city_pair import HobbyCityPair
 from models.hobby_tag import HobbyTag
 from models.newsletter import Newsletter
+from models.newsletter_feedback import NewsletterFeedback
 from models.oauth_token import OAuthToken
 from models.onboarding_step import OnboardingStep
 from models.user import User
@@ -14,6 +15,7 @@ __all__ = [
     "HobbyCityPair",
     "HobbyTag",
     "Newsletter",
+    "NewsletterFeedback",
     "OAuthToken",
     "OnboardingStep",
     "User",
