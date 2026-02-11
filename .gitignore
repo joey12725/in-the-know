@@ -1,0 +1,9 @@
+node_modules/
+.env
+.env.local
+google_credentials.json
+__pycache__/
+*.pyc
+.next/
+.vercel/
+venv/
