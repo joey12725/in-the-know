@@ -23,6 +23,11 @@ type SignupResponse = {
   onboarding_token: string;
 };
 
+type WaitlistResponse = {
+  joined: boolean;
+  message: string;
+};
+
 type OnboardingWizardProps = {
   initialEmail: string;
   initialToken: string;
@@ -39,6 +44,7 @@ const processingStages = [
   "Finding events near you...",
   "Personalizing your experience...",
 ];
+const pilotCities = new Set(["austin", "san antonio"]);
 
 type GoogleAddressComponent = {
   long_name: string;
@@ -106,6 +112,10 @@ export default function OnboardingWizard({
   const [csrfToken, setCsrfToken] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [waitlistBusy, setWaitlistBusy] = useState(false);
+  const [waitlistSubmitted, setWaitlistSubmitted] = useState(false);
+  const [waitlistMessage, setWaitlistMessage] = useState("");
+  const [outsidePilot, setOutsidePilot] = useState(false);
   const [processingStageIndex, setProcessingStageIndex] = useState(-1);
   const [finished, setFinished] = useState(false);
   const addressInputRef = useRef<HTMLInputElement | null>(null);
@@ -168,6 +178,9 @@ export default function OnboardingWizard({
           const derivedCity = getCityFromComponents(place.address_components);
           if (derivedCity) {
             setCity(derivedCity);
+            setOutsidePilot(false);
+            setWaitlistSubmitted(false);
+            setWaitlistMessage("");
           }
         }
         const selectedLat = place.geometry?.location?.lat();
@@ -208,6 +221,25 @@ export default function OnboardingWizard({
 
   const completionPercent = useMemo(() => Math.round(((stepIndex + 1) / stepNames.length) * 100), [stepIndex]);
 
+  const normalizeCity = (value: string) => {
+    let trimmed = " ".join(value.trim().toLowerCase().replaceAll(".", "").split());
+    if (trimmed.includes(",")) {
+      [trimmed] = trimmed.split(",", 1);
+    }
+    for (const suffix of [", tx", ", texas", " tx", " texas"]) {
+      if (trimmed.endsWith(suffix)) {
+        trimmed = trimmed.slice(0, trimmed.length - suffix.length).trim();
+        break;
+      }
+    }
+    return trimmed
+      .split(" ")
+      .filter((token) => Number.isNaN(Number(token)))
+      .join(" ");
+  };
+
+  const isPilotCity = (value: string) => pilotCities.has(normalizeCity(value));
+
   const toggleGoal = (goal: string) => {
     setGoalTypes((current) =>
       current.includes(goal) ? current.filter((entry) => entry !== goal) : [...current, goal]
@@ -218,6 +250,45 @@ export default function OnboardingWizard({
     for (let index = 0; index < processingStages.length; index += 1) {
       setProcessingStageIndex(index);
       await new Promise((resolve) => setTimeout(resolve, 950));
+    }
+  };
+
+  const joinWaitlist = async () => {
+    if (waitlistSubmitted) {
+      return;
+    }
+
+    setError("");
+    try {
+      setWaitlistBusy(true);
+      const response = await fetch("/api/waitlist", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "x-csrf-token": csrfToken,
+        },
+        body: JSON.stringify({
+          name,
+          email,
+          address,
+          city,
+          source: "outside-pilot-onboarding",
+        }),
+      });
+
+      if (!response.ok) {
+        const details = (await response.json().catch(() => null)) as { detail?: string } | null;
+        throw new Error(details?.detail || "Unable to join waitlist right now.");
+      }
+
+      const data = (await response.json()) as WaitlistResponse;
+      setWaitlistMessage(data.message);
+      setWaitlistSubmitted(true);
+    } catch (waitlistError) {
+      setError(waitlistError instanceof Error ? waitlistError.message : "Unexpected waitlist error.");
+    } finally {
+      setWaitlistBusy(false);
     }
   };
 
@@ -293,8 +364,18 @@ export default function OnboardingWizard({
       return;
     }
 
+    if (stepIndex === 0 && outsidePilot) {
+      await joinWaitlist();
+      return;
+    }
+
     if (stepIndex === 0 && (!name.trim() || !address.trim() || !city.trim())) {
       setError("Please complete your name, address, and city.");
+      return;
+    }
+
+    if (stepIndex === 0 && !isPilotCity(city)) {
+      setOutsidePilot(true);
       return;
     }
 
@@ -386,39 +467,72 @@ export default function OnboardingWizard({
           <section className="onboarding-card">
             {stepIndex === 0 && (
               <div className="step-group">
-                <label>
-                  Email
-                  <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
-                </label>
-                <label>
-                  Name
-                  <input value={name} onChange={(event) => setName(event.target.value)} required />
-                </label>
-                <label>
-                  Full address
-                  <input
-                    ref={addressInputRef}
-                    value={address}
-                    onChange={(event) => {
-                      setAddress(event.target.value);
-                      setLat(null);
-                      setLng(null);
-                    }}
-                    placeholder="Street + city + state"
-                    required
-                  />
-                </label>
-                {placesApiKey && (
-                  <p className="status-line">
-                    {placesReady
-                      ? "Address autocomplete is on. Pick a suggestion to auto-fill city."
-                      : "Loading address autocomplete..."}
-                  </p>
+                {!outsidePilot && (
+                  <>
+                    <label>
+                      Email
+                      <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
+                    </label>
+                    <label>
+                      Name
+                      <input value={name} onChange={(event) => setName(event.target.value)} required />
+                    </label>
+                    <label>
+                      Full address
+                      <input
+                        ref={addressInputRef}
+                        value={address}
+                        onChange={(event) => {
+                          setAddress(event.target.value);
+                          setLat(null);
+                          setLng(null);
+                          setOutsidePilot(false);
+                          setWaitlistSubmitted(false);
+                          setWaitlistMessage("");
+                        }}
+                        placeholder="Street + city + state"
+                        required
+                      />
+                    </label>
+                    {placesApiKey && (
+                      <p className="status-line">
+                        {placesReady
+                          ? "Address autocomplete is on. Pick a suggestion to auto-fill city."
+                          : "Loading address autocomplete..."}
+                      </p>
+                    )}
+                    <label>
+                      City
+                      <input
+                        value={city}
+                        onChange={(event) => {
+                          setCity(event.target.value);
+                          setOutsidePilot(false);
+                          setWaitlistSubmitted(false);
+                          setWaitlistMessage("");
+                        }}
+                        required
+                      />
+                    </label>
+                  </>
                 )}
-                <label>
-                  City
-                  <input value={city} onChange={(event) => setCity(event.target.value)} required />
-                </label>
+                {outsidePilot && !waitlistSubmitted && (
+                  <div className="waitlist-panel">
+                    <h2>ITK is in pilot mode right now.</h2>
+                    <p>
+                      We are currently available only in Austin and San Antonio. Join the waitlist and we will notify you
+                      as soon as we open in {city || "your city"}.
+                    </p>
+                    <p className="status-line">You can also go back and enter an Austin or San Antonio address to continue now.</p>
+                  </div>
+                )}
+                {outsidePilot && waitlistSubmitted && (
+                  <div className="waitlist-panel">
+                    <h2>You are on the waitlist.</h2>
+                    <p>{waitlistMessage || "Thanks. We will email you when ITK launches in your city."}</p>
+                    <p className="status-line">Pilot access is currently Austin and San Antonio only.</p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -540,14 +654,42 @@ export default function OnboardingWizard({
 
           {error && <p className="error-banner">{error}</p>}
 
-          <div className="wizard-actions">
-            <button type="button" onClick={back} disabled={stepIndex === 0 || busy}>
-              Back
-            </button>
-            <button type="button" onClick={() => void next()} disabled={busy}>
-              {busy && stepIndex === 4 ? "Processing..." : busy ? "Saving..." : stepIndex === 5 ? "Finish" : "Continue"}
-            </button>
-          </div>
+          {stepIndex === 0 && outsidePilot ? (
+            <div className="wizard-actions">
+              {!waitlistSubmitted && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOutsidePilot(false);
+                    setWaitlistSubmitted(false);
+                    setWaitlistMessage("");
+                    setError("");
+                  }}
+                  disabled={waitlistBusy}
+                >
+                  Use Austin / San Antonio
+                </button>
+              )}
+              {!waitlistSubmitted ? (
+                <button type="button" onClick={() => void joinWaitlist()} disabled={waitlistBusy}>
+                  {waitlistBusy ? "Joining..." : "Join waitlist"}
+                </button>
+              ) : (
+                <Link className="cta-link" href="/">
+                  Back to landing page
+                </Link>
+              )}
+            </div>
+          ) : (
+            <div className="wizard-actions">
+              <button type="button" onClick={back} disabled={stepIndex === 0 || busy}>
+                Back
+              </button>
+              <button type="button" onClick={() => void next()} disabled={busy}>
+                {busy && stepIndex === 4 ? "Processing..." : busy ? "Saving..." : stepIndex === 5 ? "Finish" : "Continue"}
+              </button>
+            </div>
+          )}
         </>
       )}
     </div>

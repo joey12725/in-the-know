@@ -5,13 +5,15 @@ from sqlalchemy.orm import Session
 from core.config import get_settings
 from core.rate_limit import limiter
 from db.session import get_db
-from models import OnboardingStep, User, UserGoal, UserHobby
+from models import OnboardingStep, User, UserGoal, UserHobby, WaitlistEntry
 from schemas.public import (
     OnboardingStatusResponse,
     OnboardingStepRequest,
     OnboardingStepResponse,
     SignupRequest,
     SignupResponse,
+    WaitlistRequest,
+    WaitlistResponse,
 )
 from utils.sanitization import sanitize_text
 from utils.security import (
@@ -24,6 +26,23 @@ from utils.security import (
 
 router = APIRouter(prefix="/api", tags=["public"])
 settings = get_settings()
+pilot_cities = {"austin", "san antonio"}
+
+
+def _normalize_city_for_pilot(city: str) -> str:
+    normalized = " ".join(city.strip().lower().replace(".", "").split())
+    if "," in normalized:
+        normalized = normalized.split(",", 1)[0].strip()
+    for suffix in (", tx", ", texas", " tx", " texas"):
+        if normalized.endswith(suffix):
+            normalized = normalized[: -len(suffix)].strip()
+            break
+    normalized = " ".join(token for token in normalized.split() if not token.isdigit())
+    return normalized
+
+
+def _is_pilot_city(city: str) -> bool:
+    return _normalize_city_for_pilot(city) in pilot_cities
 
 
 @router.get("/csrf-token")
@@ -45,6 +64,11 @@ def issue_csrf_token(response: Response) -> dict:
 @limiter.limit(settings.rate_limit_signup)
 def signup(request: Request, response: Response, payload: SignupRequest, db: Session = Depends(get_db)) -> SignupResponse:
     ensure_csrf(request)
+    if not _is_pilot_city(payload.city):
+        raise HTTPException(
+            status_code=409,
+            detail="Pilot currently available only in Austin and San Antonio. Join the waitlist instead.",
+        )
 
     existing_user = db.scalar(select(User).where(User.email == payload.email.lower()))
     onboarding_token = generate_random_token(24)
@@ -107,6 +131,32 @@ def signup(request: Request, response: Response, payload: SignupRequest, db: Ses
     )
 
     return SignupResponse(user_id=user.id, onboarding_token=user.onboarding_token)
+
+
+@router.post("/waitlist", response_model=WaitlistResponse)
+def join_waitlist(request: Request, payload: WaitlistRequest, db: Session = Depends(get_db)) -> WaitlistResponse:
+    ensure_csrf(request)
+    email = payload.email.lower()
+
+    existing_entry = db.scalar(select(WaitlistEntry).where(WaitlistEntry.email == email))
+    if existing_entry:
+        existing_entry.name = sanitize_text(payload.name)
+        existing_entry.address = sanitize_text(payload.address)
+        existing_entry.city = sanitize_text(payload.city)
+        existing_entry.source = sanitize_text(payload.source) if payload.source else None
+    else:
+        db.add(
+            WaitlistEntry(
+                email=email,
+                name=sanitize_text(payload.name),
+                address=sanitize_text(payload.address),
+                city=sanitize_text(payload.city),
+                source=sanitize_text(payload.source) if payload.source else None,
+            )
+        )
+
+    db.commit()
+    return WaitlistResponse(joined=True, message="You are on the waitlist. We will email when ITK launches in your city.")
 
 
 @router.get("/onboarding/{token}", response_model=OnboardingStatusResponse)

@@ -47,6 +47,28 @@ class SignupResponse(BaseModel):
     onboarding_token: str
 
 
+class WaitlistRequest(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
+    email: EmailStr
+    address: str = Field(min_length=3, max_length=300)
+    city: str = Field(min_length=2, max_length=120)
+    source: str | None = Field(default=None, max_length=120)
+
+    @field_validator("name", "address", "city", "source", mode="before")
+    @classmethod
+    def normalize_waitlist_fields(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        if not isinstance(value, str):
+            raise TypeError("Expected text input")
+        return _normalize_text(value)
+
+
+class WaitlistResponse(BaseModel):
+    joined: bool
+    message: str
+
+
 class OnboardingStatusResponse(BaseModel):
     user_id: UUID
     email: EmailStr

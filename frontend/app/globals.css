@@ -522,6 +522,19 @@ h1 span {
   margin-top: 0.4rem;
 }
 
+.waitlist-panel {
+  border: 1px solid rgba(8, 18, 15, 0.16);
+  border-radius: 14px;
+  padding: 1rem;
+  background: linear-gradient(180deg, #fffdfa 0%, #f6fbff 100%);
+  display: grid;
+  gap: 0.6rem;
+}
+
+.waitlist-panel h2 {
+  font-size: 1.34rem;
+}
+
 .confetti-rain {
   position: absolute;
   inset: 0;
