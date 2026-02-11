@@ -15,6 +15,7 @@ from schemas.public import (
     WaitlistRequest,
     WaitlistResponse,
 )
+from services.onboarding_email import send_onboarding_email
 from utils.sanitization import sanitize_text
 from utils.security import (
     CSRF_COOKIE_NAME,
@@ -129,6 +130,12 @@ def signup(request: Request, response: Response, payload: SignupRequest, db: Ses
         max_age=60 * 60 * 24 * 7,
         path="/",
     )
+
+    # Fire onboarding email (non-blocking, don't fail signup if email fails)
+    try:
+        send_onboarding_email(user.name, user.email, user.onboarding_token)
+    except Exception:
+        pass  # Email failure shouldn't block signup
 
     return SignupResponse(user_id=user.id, onboarding_token=user.onboarding_token)
 
