@@ -18,6 +18,7 @@ from services.ai import openrouter_client
 from services.google_cal import get_calendar_availability
 from services.spotify import get_recent_tracks
 from services.token_crypto import cipher
+from services.venues import get_cached_venue_events_for_city
 
 
 def _extract_email_address(value: str) -> str:
@@ -130,6 +131,21 @@ def _build_event_groups(events: list[dict], city: str) -> dict[str, list[dict]]:
             }
         ]
     return grouped
+
+
+def _merge_event_sources(primary_events: list[dict], secondary_events: list[dict]) -> list[dict]:
+    merged: list[dict] = []
+    seen: set[tuple[str, str, str]] = set()
+    for event in [*primary_events, *secondary_events]:
+        name = str(event.get("name", "")).strip().lower()
+        date = str(event.get("date", "")).strip().lower()
+        location = str(event.get("location", "")).strip().lower()
+        key = (name, date, location)
+        if not name or key in seen:
+            continue
+        seen.add(key)
+        merged.append(event)
+    return merged
 
 
 def _sanitize_subject(subject: str, city: str, events: list[dict]) -> str:
@@ -427,9 +443,11 @@ def draft_newsletter_for_user(db: Session, user: User) -> Newsletter:
         select(HobbyCityPair).where(HobbyCityPair.city == user.city.lower()).order_by(HobbyCityPair.frequency.desc()).limit(4)
     ).all()
 
-    events: list[dict] = []
+    pair_events: list[dict] = []
     for pair in pairs:
-        events.extend(pair.cached_results[:2])
+        pair_events.extend(pair.cached_results[:2])
+    venue_events = get_cached_venue_events_for_city(db, user.city, limit=8)
+    events = _merge_event_sources(primary_events=venue_events, secondary_events=pair_events)
     if not events:
         events = [
             {"name": "City event roundup", "date": "This week", "location": user.city, "url": "https://itk-so.vercel.app"}

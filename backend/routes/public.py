@@ -16,6 +16,7 @@ from schemas.public import (
     WaitlistResponse,
 )
 from services.onboarding_email import send_onboarding_email
+from services.venues import discover_major_music_venues
 from utils.sanitization import sanitize_text
 from utils.security import (
     CSRF_COOKIE_NAME,
@@ -136,6 +137,12 @@ def signup(request: Request, response: Response, payload: SignupRequest, db: Ses
         send_onboarding_email(user.name, user.email, user.onboarding_token)
     except Exception:
         pass  # Email failure shouldn't block signup
+
+    # Prime venue knowledge for pilot-city users on enrollment.
+    try:
+        discover_major_music_venues(db, city=user.city)
+    except Exception:
+        db.rollback()
 
     return SignupResponse(user_id=user.id, onboarding_token=user.onboarding_token)
 

@@ -1,3 +1,4 @@
+from models.city_venue import CityVenue
 from models.hobby_city_pair import HobbyCityPair
 from models.hobby_tag import HobbyTag
 from models.newsletter import Newsletter
@@ -9,6 +10,7 @@ from models.user_hobby import UserHobby
 from models.waitlist_entry import WaitlistEntry
 
 __all__ = [
+    "CityVenue",
     "HobbyCityPair",
     "HobbyTag",
     "Newsletter",

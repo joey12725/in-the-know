@@ -14,6 +14,16 @@ class SearchEventsRequest(BaseModel):
     limit: int = Field(default=50, ge=1, le=500)
 
 
+class DiscoverVenuesRequest(BaseModel):
+    city: str | None = None
+    force_refresh: bool = False
+
+
+class SearchVenueEventsRequest(BaseModel):
+    city: str | None = None
+    force_refresh: bool = False
+
+
 class DraftEmailsRequest(BaseModel):
     user_id: UUID | None = None
 
