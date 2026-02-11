@@ -17,7 +17,7 @@ def _fallback_events(city: str, hobby: str) -> list[dict]:
             "date": "TBD",
             "location": city.title(),
             "why": f"Matches your interest in {hobby}",
-            "url": "https://itk.so/sample-event",
+            "url": "https://itk-so.vercel.app/sample-event",
         }
     ]
 

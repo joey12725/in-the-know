@@ -1,6 +1,6 @@
 # ITK Frontend
 
-Next.js App Router frontend for `itk.so`.
+Next.js App Router frontend for `https://itk-so.vercel.app`.
 
 ## Scripts
 

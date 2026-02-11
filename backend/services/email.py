@@ -71,7 +71,9 @@ def draft_newsletter_for_user(db: Session, user: User) -> Newsletter:
     for pair in pairs:
         events.extend(pair.cached_results[:2])
     if not events:
-        events = [{"name": "City event roundup", "date": "This week", "location": user.city, "url": "https://itk.so"}]
+        events = [
+            {"name": "City event roundup", "date": "This week", "location": user.city, "url": "https://itk-so.vercel.app"}
+        ]
 
     music_context = _collect_music_context(db, user)
     busy_windows = _collect_calendar_context(db, user)

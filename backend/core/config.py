@@ -17,8 +17,8 @@ class Settings(BaseSettings):
 
     app_name: str = "ITK API"
     environment: Literal["development", "staging", "production"] = "development"
-    app_url: str = Field(default="http://localhost:3000", alias="NEXT_PUBLIC_APP_URL")
-    backend_api_url: str = "http://localhost:8000"
+    app_url: str = Field(default="https://itk-so.vercel.app", alias="NEXT_PUBLIC_APP_URL")
+    backend_api_url: str = Field(default="https://your-backend.vercel.app", alias="BACKEND_API_URL")
 
     database_url: str = Field(alias="DATABASE_URL")
     database_url_unpooled: str | None = Field(default=None, alias="DATABASE_URL_UNPOOLED")
@@ -41,7 +41,9 @@ class Settings(BaseSettings):
     api_cron_secret: str = "change-me"
 
     rate_limit_signup: str = "10/minute"
-    cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
+    cors_origins: list[str] = Field(
+        default_factory=lambda: ["http://localhost:3000", "https://itk-so.vercel.app"]
+    )
 
     @field_validator("cors_origins", mode="before")
     @classmethod
@@ -50,7 +52,7 @@ class Settings(BaseSettings):
             return value
         if isinstance(value, str):
             return [origin.strip() for origin in value.split(",") if origin.strip()]
-        return ["http://localhost:3000"]
+        return ["http://localhost:3000", "https://itk-so.vercel.app"]
 
 
 @lru_cache(maxsize=1)
