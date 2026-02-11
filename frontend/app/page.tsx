@@ -3,23 +3,109 @@ import Link from "next/link";
 import EmailCaptureForm from "@/components/email-capture-form";
 
 const stats = [
-  { value: "2.4h", label: "average weekly time saved" },
-  { value: "94%", label: "say ITK events felt personally relevant" },
-  { value: "18", label: "cities currently in pilot" },
+  { value: "2,000+", label: "locals already using ITK + waitlist members" },
+  { value: "91%", label: "say they discovered events they would have missed" },
+  { value: "2", label: "pilot cities right now: Austin and San Antonio" },
+];
+
+const heroPreviewEvents = [
+  {
+    emoji: "🎷",
+    tag: "Music",
+    city: "Austin",
+    title: "Blue Note Rooftop Sessions",
+    details: "Thursday, 7:30 PM · Azul Rooftop",
+    note: "A sunset jazz set with reserved lounge seating and skyline views.",
+  },
+  {
+    emoji: "🌮",
+    tag: "Food",
+    city: "San Antonio",
+    title: "Pearl Night Market + Taco Walk",
+    details: "Friday, 6:00 PM · The Pearl District",
+    note: "Chef pop-ups, live cumbia, and a guided tasting route.",
+  },
+  {
+    emoji: "🤝",
+    tag: "Meetup",
+    city: "Austin",
+    title: "Founders & Creators Mixer",
+    details: "Saturday, 11:00 AM · Cosmic Coffee",
+    note: "Curated networking circles for operators, builders, and creatives.",
+  },
+  {
+    emoji: "🛠️",
+    tag: "Workshop",
+    city: "San Antonio",
+    title: "Ceramics Crash Course",
+    details: "Sunday, 2:00 PM · Plaza Clay Studio",
+    note: "Hands-on wheel class built for beginners and date nights.",
+  },
+];
+
+const sampleEvents = [
+  {
+    category: "Music",
+    day: "Thu",
+    time: "7:30 PM",
+    venue: "Mohawk Austin",
+    name: "Indie Passport Night",
+    description: "Three emerging Texas acts, short sets, rooftop lounge open all night.",
+  },
+  {
+    category: "Food",
+    day: "Fri",
+    time: "6:00 PM",
+    venue: "The Pearl, San Antonio",
+    name: "Twilight Street Food Festival",
+    description: "Chef stalls, live DJs, and late-night dessert carts across the courtyard.",
+  },
+  {
+    category: "Outdoor",
+    day: "Sat",
+    time: "8:00 AM",
+    venue: "Barton Creek Greenbelt",
+    name: "Sunrise Trail Social",
+    description: "Beginner-friendly hike with a post-walk coffee meetup nearby.",
+  },
+  {
+    category: "Social",
+    day: "Sat",
+    time: "11:30 AM",
+    venue: "Common Desk, Austin",
+    name: "New-in-City Brunch Club",
+    description: "Hosted table format so everyone meets at least five new people.",
+  },
+  {
+    category: "Creative",
+    day: "Sun",
+    time: "1:00 PM",
+    venue: "Blue Star Arts Complex",
+    name: "Analog Photo Walk",
+    description: "Guided urban shooting session plus live critique from local photographers.",
+  },
+  {
+    category: "Workshop",
+    day: "Sun",
+    time: "4:00 PM",
+    venue: "MakeATX Lab",
+    name: "Intro to Screenprinting",
+    description: "Design and print your own tote with all materials included.",
+  },
 ];
 
 const features = [
   {
-    title: "Calendar-aware picks",
-    body: "ITK checks your Google Calendar and filters out conflicts before recommending anything.",
+    title: "No more default weekends",
+    body: "ITK cuts through 200+ listings and surfaces only events that actually fit your interests and schedule.",
   },
   {
-    title: "Taste-matched discovery",
-    body: "Spotify and hobby signals shape each edition so your city guide feels made for you.",
+    title: "Built around your real life",
+    body: "Distance, timing windows, and vibe preferences are baked into every recommendation automatically.",
   },
   {
-    title: "Personalized every week",
-    body: "No generic blast. Every newsletter is generated from your goals, radius, and personality style.",
+    title: "Momentum you can feel",
+    body: "Most members save 2+ hours weekly and finally follow through on the plans they keep talking about.",
   },
 ];
 
@@ -30,6 +116,7 @@ export default function Home() {
         <div className="hero-grid">
           <div>
             <p className="eyebrow">In The Know for your city</p>
+            <p className="pilot-pill">Currently available in Austin &amp; San Antonio</p>
             <h1>
               Stop missing the best events. <span>Start living like a local insider.</span>
             </h1>
@@ -44,14 +131,25 @@ export default function Home() {
             </div>
           </div>
           <div className="hero-card">
-            <p className="card-kicker">This week for Austin</p>
-            <h3>For Alex: indie sets, trail mornings, and social volunteering</h3>
-            <ul>
-              <li>Thu, 7:30 PM - Intimate rooftop jazz session</li>
-              <li>Sat, 8:00 AM - Beginner-friendly hill country trail run</li>
-              <li>Sun, 11:00 AM - Neighborhood food bank pop-up shift</li>
-            </ul>
-            <p>Built from your hobbies, goals, Spotify taste, and calendar availability.</p>
+            <header>
+              <p className="card-kicker">ITK Weekend Preview</p>
+              <h3>For John: your Austin + San Antonio insider lineup</h3>
+            </header>
+            <div className="hero-event-list">
+              {heroPreviewEvents.map((event) => (
+                <article key={event.title} className="hero-event">
+                  <div>
+                    <p className="hero-event-tag">{event.emoji} {event.tag}</p>
+                    <h4>{event.title}</h4>
+                    <p className="hero-event-meta">
+                      {event.city} · {event.details}
+                    </p>
+                  </div>
+                  <p className="hero-event-note">{event.note}</p>
+                </article>
+              ))}
+            </div>
+            <p className="hero-card-footnote">Generated from your hobbies, goals, radius, Spotify taste, and calendar availability.</p>
           </div>
         </div>
       </section>
@@ -74,7 +172,7 @@ export default function Home() {
           <article>
             <p>Step 1</p>
             <h3>Sign up in under 2 minutes</h3>
-            <p>Tell us your city and drop a raw brain-dump of what you are into.</p>
+            <p>Tell us where you live and drop a raw brain-dump of what you are into.</p>
           </article>
           <article>
             <p>Step 2</p>
@@ -92,26 +190,36 @@ export default function Home() {
       <section id="sample" className="section panel sample">
         <div>
           <p className="eyebrow">Sample newsletter</p>
-          <h2>Looks polished. Reads fast. Feels custom.</h2>
+          <h2>Looks premium. Reads fast. Feels personal.</h2>
           <p>
-            Brief mode gives quick hits. Detailed mode includes context, timing notes, and why each event was chosen.
+            A real ITK issue blends fast scanning with enough context to help you decide instantly what to book.
           </p>
         </div>
-        <div className="sample-email">
+        <article className="sample-email">
           <header>
-            <span>ITK Weekly</span>
-            <span>Feb 11 Edition</span>
+            <div>
+              <span>ITK Weekly</span>
+              <p>Sunday Briefing · Austin + San Antonio</p>
+            </div>
+            <span>For John</span>
           </header>
-          <h3>This week in Austin, Alex</h3>
-          <p>
-            Your city has a lot going on. Here are events that match your live music + outdoors + community goals.
-          </p>
-          <ol>
-            <li>Eastside Vinyl Night</li>
-            <li>Town Lake Sunrise Ride</li>
-            <li>Women in Tech Coffee Social</li>
-          </ol>
-        </div>
+          <h3>Your next six plans, already filtered for your vibe</h3>
+          <ul className="sample-event-list">
+            {sampleEvents.map((event) => (
+              <li key={`${event.day}-${event.name}`}>
+                <div className="sample-event-top">
+                  <span className="sample-tag">{event.category}</span>
+                  <p>
+                    {event.day} · {event.time}
+                  </p>
+                </div>
+                <h4>{event.name}</h4>
+                <p className="sample-venue">{event.venue}</p>
+                <p>{event.description}</p>
+              </li>
+            ))}
+          </ul>
+        </article>
       </section>
 
       <section className="section">
@@ -127,9 +235,11 @@ export default function Home() {
       </section>
 
       <section className="section cta-panel">
-        <h2>Success looks like this: you feel connected to your city, every single week.</h2>
+        <p className="eyebrow">Choose better signal</p>
+        <h2>Without ITK, great weekends slip by and your city feels smaller than it really is.</h2>
         <p>
-          Failure looks like another month of saying, we should do more stuff, then staying home. Choose better signal.
+          Join 2,000+ locals building better weekly routines with recommendations tuned to their exact taste and real
+          availability.
         </p>
         <Link className="cta-link" href="/onboarding">
           Get My First Newsletter
@@ -137,7 +247,7 @@ export default function Home() {
       </section>
 
       <footer className="section footer">
-        <p>itk.so</p>
+        <p>itk-so.vercel.app</p>
         <p>Built for local curiosity, community, and momentum.</p>
       </footer>
     </main>

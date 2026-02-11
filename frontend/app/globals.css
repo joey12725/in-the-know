@@ -8,6 +8,9 @@
   --panel: #fffefb;
   --line: #d8d5ce;
   --accent: #ed5a2f;
+  --sun-300: #ffd28c;
+  --sky-200: #b7dcff;
+  --berry-500: #8a3357;
 }
 
 * {
@@ -40,7 +43,7 @@ a {
 }
 
 main {
-  width: min(1100px, calc(100vw - 2rem));
+  width: min(1160px, calc(100vw - 2rem));
   margin: 0 auto;
   padding: 1.5rem 0 4rem;
 }
@@ -89,6 +92,21 @@ h1 span {
   margin-top: 1rem;
   max-width: 58ch;
   color: var(--ink-700);
+}
+
+.pilot-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.7rem;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid rgba(8, 18, 15, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.78);
+  font-size: 0.84rem;
+  color: var(--ink-700);
+  font-weight: 600;
+  backdrop-filter: blur(8px);
 }
 
 .capture-form {
@@ -143,30 +161,85 @@ h1 span {
 }
 
 .hero-card {
-  border: 1px solid var(--line);
-  border-radius: 24px;
+  border: 1px solid rgba(138, 51, 87, 0.22);
+  border-radius: 26px;
   padding: 1.3rem;
-  background: linear-gradient(165deg, #ffffff 0%, #f1faf6 100%);
-  box-shadow: 0 24px 45px rgba(8, 18, 15, 0.08);
+  background:
+    radial-gradient(circle at 98% 2%, rgba(255, 210, 140, 0.45), transparent 40%),
+    radial-gradient(circle at 2% 30%, rgba(183, 220, 255, 0.4), transparent 45%),
+    linear-gradient(180deg, #fffefc 0%, #fff8f2 100%);
+  box-shadow: 0 28px 48px rgba(8, 18, 15, 0.12);
   animation: reveal 450ms ease;
+  position: relative;
+  overflow: hidden;
 }
 
 .card-kicker {
   font-size: 0.8rem;
-  color: var(--ink-500);
+  color: var(--berry-500);
   text-transform: uppercase;
   letter-spacing: 0.08rem;
+  font-weight: 700;
 }
 
 .hero-card h3 {
   margin-top: 0.7rem;
   font-size: 1.25rem;
+  max-width: 26ch;
 }
 
-.hero-card ul {
-  margin: 0.9rem 0 0.7rem 1rem;
+.hero-event-list {
+  margin-top: 1rem;
   display: grid;
-  gap: 0.35rem;
+  gap: 0.65rem;
+}
+
+.hero-event {
+  border: 1px solid rgba(28, 47, 42, 0.12);
+  background: rgba(255, 255, 255, 0.82);
+  border-radius: 16px;
+  padding: 0.75rem;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.hero-event-tag {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 0.3rem;
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  background: rgba(8, 18, 15, 0.08);
+  color: var(--ink-900);
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04rem;
+}
+
+.hero-event h4 {
+  font-family: var(--font-body), "Segoe UI", sans-serif;
+  margin-top: 0.4rem;
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.hero-event-meta {
+  color: var(--ink-500);
+  font-size: 0.84rem;
+}
+
+.hero-event-note {
+  font-size: 0.88rem;
+  color: var(--ink-700);
+}
+
+.hero-card-footnote {
+  margin-top: 0.8rem;
+  color: var(--ink-500);
+  font-size: 0.84rem;
+  line-height: 1.4;
 }
 
 .panel {
@@ -206,36 +279,99 @@ h1 span {
 }
 
 .sample-email {
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: #fbfffd;
-  padding: 1rem;
+  border: 1px solid rgba(8, 18, 15, 0.16);
+  border-radius: 18px;
+  background: linear-gradient(178deg, #fefcff 0%, #f6fbff 100%);
+  box-shadow: 0 18px 40px rgba(8, 18, 15, 0.1);
+  padding: 1.15rem;
 }
 
 .sample-email header {
   display: flex;
   justify-content: space-between;
-  font-size: 0.85rem;
+  align-items: baseline;
+  gap: 0.6rem;
+  font-size: 0.82rem;
   color: var(--ink-500);
+  border-bottom: 1px dashed rgba(28, 47, 42, 0.2);
+  padding-bottom: 0.55rem;
+}
+
+.sample-email header div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.sample-email header div span {
+  font-weight: 700;
+  color: var(--ink-900);
 }
 
 .sample-email h3 {
-  margin-top: 0.5rem;
+  margin-top: 0.8rem;
+  font-size: 1.25rem;
 }
 
-.sample-email ol {
-  margin-top: 0.8rem;
-  margin-left: 1rem;
+.sample-event-list {
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.68rem;
+  list-style: none;
+}
+
+.sample-event-list li {
+  border: 1px solid rgba(28, 47, 42, 0.14);
+  background: rgba(255, 255, 255, 0.86);
+  border-radius: 14px;
+  padding: 0.72rem;
+  display: grid;
+  gap: 0.24rem;
+}
+
+.sample-event-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--ink-500);
+  font-size: 0.82rem;
+}
+
+.sample-tag {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: rgba(237, 90, 47, 0.15);
+  color: #8d3f26;
+  padding: 0.15rem 0.56rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05rem;
+}
+
+.sample-event-list h4 {
+  font-family: var(--font-body), "Segoe UI", sans-serif;
+  font-size: 0.98rem;
+  line-height: 1.26;
+}
+
+.sample-venue {
+  color: var(--ink-500);
+  font-size: 0.84rem;
 }
 
 .cta-panel {
   text-align: center;
   display: grid;
   gap: 1rem;
-  border: 1px dashed var(--ink-500);
+  border: 1px solid rgba(8, 18, 15, 0.22);
   border-radius: 20px;
   padding: 2rem 1rem;
-  background: linear-gradient(180deg, #fcfff7 0%, #f3f7ff 100%);
+  background:
+    radial-gradient(circle at 20% 20%, rgba(237, 90, 47, 0.13), transparent 38%),
+    radial-gradient(circle at 85% 10%, rgba(128, 212, 183, 0.22), transparent 40%),
+    linear-gradient(180deg, #fffef7 0%, #f2f8ff 100%);
 }
 
 .cta-link {
