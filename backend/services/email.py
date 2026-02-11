@@ -3,8 +3,8 @@ from __future__ import annotations
 from collections import defaultdict
 from datetime import datetime, timezone
 from html import escape
+import json
 import re
-from typing import Iterable
 from urllib.parse import quote_plus
 from uuid import UUID
 
@@ -13,7 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.config import get_settings
-from models import HobbyCityPair, Newsletter, OAuthToken, User, UserHobby
+from models import HobbyCityPair, Newsletter, OAuthToken, User, UserGoal, UserHobby
 from services.ai import openrouter_client
 from services.google_cal import get_calendar_availability
 from services.spotify import get_recent_tracks
@@ -130,6 +130,89 @@ def _build_event_groups(events: list[dict], city: str) -> dict[str, list[dict]]:
             }
         ]
     return grouped
+
+
+def _sanitize_subject(subject: str, city: str, events: list[dict]) -> str:
+    banned_terms = ("what's actually worth leaving the house for", "fits your vibe", "doom-scrolling", "doom scrolling")
+    candidate = " ".join(subject.replace("\n", " ").split()).strip(" -")
+    lowered = candidate.lower()
+    if not candidate or any(term in lowered for term in banned_terms):
+        first_event = _truncate(str(events[0].get("name", "weekend plans")).strip(), 38) if events else "weekend plans"
+        candidate = f"{city}: {first_event}"
+    if len(candidate) > 78:
+        candidate = _truncate(candidate, 78)
+    return candidate
+
+
+def _sanitize_intro(intro: str, city: str) -> str:
+    banned_terms = (" yo ", " vibe", "doom-scrolling", "doom scrolling", "fits your vibe", "what's worth leaving the house for")
+    cleaned = " ".join(intro.replace("\n", " ").split())
+    sentence_parts = re.split(r"(?<=[.!?])\s+", cleaned)
+    one_sentence = sentence_parts[0].strip() if sentence_parts else cleaned.strip()
+    if one_sentence and one_sentence[-1] not in ".!?":
+        one_sentence = f"{one_sentence}."
+    lowered = f" {one_sentence.lower()} "
+    if not one_sentence or any(term in lowered for term in banned_terms):
+        return f"This week in {city} has a few legit standouts that are actually worth your time."
+    return _truncate(one_sentence, 190)
+
+
+def _event_digest(events: list[dict]) -> str:
+    rows: list[str] = []
+    for event in events[:6]:
+        name = _truncate(str(event.get("name", "Event")).strip(), 70)
+        date = _truncate(str(event.get("date", "TBA")).strip(), 45)
+        location = _truncate(str(event.get("location", "Local")).strip(), 50)
+        why = _truncate(str(event.get("why", "")).strip(), 90)
+        rows.append(f"- {name} | {date} | {location} | {why}")
+    return "\n".join(rows)
+
+
+def _generate_newsletter_copy(
+    user: User,
+    tags: list[str],
+    hobby_raw_text: str,
+    goals_raw_text: str,
+    events: list[dict],
+    music_context: list[dict],
+    busy_windows: list[dict],
+) -> tuple[str, str]:
+    prompt = (
+        "Create newsletter copy for a local-events product.\n"
+        "Return strict JSON with keys: subject, intro.\n"
+        "Constraints:\n"
+        "- Subject: 4-9 words, specific, intriguing, tweet-energy.\n"
+        "- Intro: exactly one sentence, <= 24 words.\n"
+        "- Voice: sharp, social, friend-in-a-group-chat. Natural Gen Z tone only.\n"
+        "- Never use: yo, vibe, doom-scrolling, fits your vibe, what's worth leaving the house for.\n"
+        "- Ground writing in real details from events, hobbies raw text, and goals raw text.\n"
+        f"User: name={user.name}, city={user.city}, concision={user.concision_pref}.\n"
+        f"Hobby tags (search labels): {tags}\n"
+        f"Hobbies raw text (personalization context): {hobby_raw_text}\n"
+        f"Goals raw text (personalization context): {goals_raw_text}\n"
+        f"Events:\n{_event_digest(events)}\n"
+        f"Spotify context: {music_context}\n"
+        f"Calendar busy windows: {busy_windows}\n"
+    )
+    result = openrouter_client.chat(
+        prompt=prompt,
+        system_prompt="You are ITK's newsletter copywriter. Return strict minified JSON only.",
+    )
+
+    subject = ""
+    intro = ""
+    if result:
+        try:
+            parsed = json.loads(result)
+            if isinstance(parsed, dict):
+                subject = str(parsed.get("subject", "")).strip()
+                intro = str(parsed.get("intro", "")).strip()
+        except json.JSONDecodeError:
+            pass
+
+    sanitized_subject = _sanitize_subject(subject, user.city, events)
+    sanitized_intro = _sanitize_intro(intro, user.city)
+    return sanitized_subject, sanitized_intro
 
 
 def _render_newsletter_html(
@@ -286,7 +369,10 @@ def draft_newsletter_for_user(db: Session, user: User) -> Newsletter:
     latest_hobbies = db.scalars(
         select(UserHobby).where(UserHobby.user_id == user.id).order_by(UserHobby.created_at.desc())
     ).first()
+    latest_goals = db.scalars(select(UserGoal).where(UserGoal.user_id == user.id).order_by(UserGoal.created_at.desc())).first()
     tags = latest_hobbies.parsed_tags if latest_hobbies else []
+    hobby_raw_text = latest_hobbies.raw_text if latest_hobbies else ""
+    goals_raw_text = latest_goals.raw_text if latest_goals else ""
 
     pairs = db.scalars(
         select(HobbyCityPair).where(HobbyCityPair.city == user.city.lower()).order_by(HobbyCityPair.frequency.desc()).limit(4)
@@ -303,16 +389,15 @@ def draft_newsletter_for_user(db: Session, user: User) -> Newsletter:
     music_context = _collect_music_context(db, user)
     busy_windows = _collect_calendar_context(db, user)
 
-    prompt = (
-        "Write one concise intro sentence for a weekly local events newsletter. "
-        "No HTML. Keep it specific and clear, under 24 words. "
-        f"User name: {user.name}. City: {user.city}. Concision: {user.concision_pref}. "
-        f"Hobby tags: {tags}. Events: {events}. "
-        f"Spotify context: {music_context}. Busy windows: {busy_windows}."
+    subject, intro_line = _generate_newsletter_copy(
+        user=user,
+        tags=tags,
+        hobby_raw_text=hobby_raw_text,
+        goals_raw_text=goals_raw_text,
+        events=events,
+        music_context=music_context,
+        busy_windows=busy_windows,
     )
-    intro_line = openrouter_client.chat(prompt=prompt, system_prompt="Return plain text only.")
-    if not intro_line:
-        intro_line = f"Here are your curated picks across {user.city} this week."
 
     html = _render_newsletter_html(
         user_name=user.name,
@@ -326,7 +411,7 @@ def draft_newsletter_for_user(db: Session, user: User) -> Newsletter:
 
     newsletter = Newsletter(
         user_id=user.id,
-        subject=f"{user.name}, your week in {user.city}",
+        subject=subject,
         html_content=html,
         events_included=events,
     )
