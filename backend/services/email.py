@@ -9,7 +9,7 @@ from urllib.parse import quote_plus
 from uuid import UUID
 
 import httpx
-from sqlalchemy import select
+from sqlalchemy import inspect, select, text
 from sqlalchemy.orm import Session
 
 from core.config import get_settings
@@ -168,15 +168,61 @@ def _event_digest(events: list[dict]) -> str:
     return "\n".join(rows)
 
 
+def _collect_recent_feedback_context(db: Session, user_id: UUID) -> list[str]:
+    bind = db.get_bind()
+    if bind is None:
+        return []
+
+    try:
+        if not inspect(bind).has_table("newsletter_feedback"):
+            return []
+        rows = db.execute(
+            text(
+                """
+                SELECT rewritten_feedback
+                FROM newsletter_feedback
+                WHERE user_id = :user_id
+                ORDER BY created_at DESC
+                LIMIT 6
+                """
+            ),
+            {"user_id": str(user_id)},
+        ).all()
+        return [str(row[0]).strip() for row in rows if row and row[0]]
+    except Exception:
+        db.rollback()
+        return []
+
+
+def _derive_dating_preference(user: User, goals_raw_text: str, goal_types: list[str]) -> str:
+    explicit_pref = str(getattr(user, "dating_preference", "") or "").strip().lower()
+    if explicit_pref in {"date_night", "meeting_people", "both"}:
+        return explicit_pref
+
+    has_dating_goal = any("dating" in str(goal).lower() for goal in goal_types)
+    if not has_dating_goal:
+        return "not_specified"
+
+    haystack = goals_raw_text.lower()
+    if any(term in haystack for term in ("meet people", "singles", "speed dating", "mixer")):
+        return "meeting_people"
+    if any(term in haystack for term in ("partner", "boyfriend", "girlfriend", "wife", "husband", "date night")):
+        return "date_night"
+    return "both"
+
+
 def _generate_newsletter_copy(
     user: User,
     tags: list[str],
     hobby_raw_text: str,
     goals_raw_text: str,
+    dating_preference: str,
+    recent_feedback: list[str],
     events: list[dict],
     music_context: list[dict],
     busy_windows: list[dict],
 ) -> tuple[str, str]:
+    feedback_block = "\n".join(f"- {item}" for item in recent_feedback) if recent_feedback else "- none yet"
     prompt = (
         "Create newsletter copy for a local-events product.\n"
         "Return strict JSON with keys: subject, intro.\n"
@@ -187,9 +233,11 @@ def _generate_newsletter_copy(
         "- Never use: yo, vibe, doom-scrolling, fits your vibe, what's worth leaving the house for.\n"
         "- Ground writing in real details from events, hobbies raw text, and goals raw text.\n"
         f"User: name={user.name}, city={user.city}, concision={user.concision_pref}.\n"
-        f"Hobby tags (search labels): {tags}\n"
-        f"Hobbies raw text (personalization context): {hobby_raw_text}\n"
-        f"Goals raw text (personalization context): {goals_raw_text}\n"
+        f"Hobby tags (for event search, not writing style): {tags}\n"
+        f"Hobbies raw text (for personalization/tone): {hobby_raw_text}\n"
+        f"Goals raw text (for personalization/tone): {goals_raw_text}\n"
+        f"Dating preference context: {dating_preference}\n"
+        f"Recent feedback from prior newsletters:\n{feedback_block}\n"
         f"Events:\n{_event_digest(events)}\n"
         f"Spotify context: {music_context}\n"
         f"Calendar busy windows: {busy_windows}\n"
@@ -373,6 +421,7 @@ def draft_newsletter_for_user(db: Session, user: User) -> Newsletter:
     tags = latest_hobbies.parsed_tags if latest_hobbies else []
     hobby_raw_text = latest_hobbies.raw_text if latest_hobbies else ""
     goals_raw_text = latest_goals.raw_text if latest_goals else ""
+    goal_types = latest_goals.goal_types if latest_goals else []
 
     pairs = db.scalars(
         select(HobbyCityPair).where(HobbyCityPair.city == user.city.lower()).order_by(HobbyCityPair.frequency.desc()).limit(4)
@@ -388,12 +437,16 @@ def draft_newsletter_for_user(db: Session, user: User) -> Newsletter:
 
     music_context = _collect_music_context(db, user)
     busy_windows = _collect_calendar_context(db, user)
+    recent_feedback = _collect_recent_feedback_context(db, user.id)
+    dating_preference = _derive_dating_preference(user, goals_raw_text, goal_types)
 
     subject, intro_line = _generate_newsletter_copy(
         user=user,
         tags=tags,
         hobby_raw_text=hobby_raw_text,
         goals_raw_text=goals_raw_text,
+        dating_preference=dating_preference,
+        recent_feedback=recent_feedback,
         events=events,
         music_context=music_context,
         busy_windows=busy_windows,
