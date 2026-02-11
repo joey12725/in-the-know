@@ -34,6 +34,11 @@ const stepNames = ["name-location", "hobbies", "goals", "preferences", "integrat
 
 const goalOptions = ["dating", "friends", "charity", "community", "hobby-growth", "music-discovery"];
 const placesApiKey = process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY ?? "";
+const processingStages = [
+  "Analyzing your interests...",
+  "Finding events near you...",
+  "Personalizing your experience...",
+];
 
 type GoogleAddressComponent = {
   long_name: string;
@@ -101,6 +106,8 @@ export default function OnboardingWizard({
   const [csrfToken, setCsrfToken] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [processingStageIndex, setProcessingStageIndex] = useState(-1);
+  const [finished, setFinished] = useState(false);
   const addressInputRef = useRef<HTMLInputElement | null>(null);
   const placesAutocompleteRef = useRef<GoogleAutocompleteInstance | null>(null);
 
@@ -207,6 +214,13 @@ export default function OnboardingWizard({
     );
   };
 
+  const runProcessingAnimation = async () => {
+    for (let index = 0; index < processingStages.length; index += 1) {
+      setProcessingStageIndex(index);
+      await new Promise((resolve) => setTimeout(resolve, 950));
+    }
+  };
+
   const createSignup = async () => {
     const payload: SignupPayload = {
       name,
@@ -302,11 +316,31 @@ export default function OnboardingWizard({
     }
 
     if (stepIndex === 4) {
-      await markStep("integrations");
+      try {
+        setBusy(true);
+        await runProcessingAnimation();
+        await markStep("integrations");
+      } catch (integrationError) {
+        setError(integrationError instanceof Error ? integrationError.message : "Unable to complete integrations step.");
+        return;
+      } finally {
+        setBusy(false);
+      }
+      setProcessingStageIndex(-1);
+      setStepIndex((current) => Math.min(current + 1, stepNames.length - 1));
+      return;
     }
 
     if (stepIndex === 5) {
-      await markStep("confirmation");
+      try {
+        setBusy(true);
+        await markStep("confirmation");
+        setFinished(true);
+      } catch (confirmationError) {
+        setError(confirmationError instanceof Error ? confirmationError.message : "Unable to finish onboarding.");
+      } finally {
+        setBusy(false);
+      }
       return;
     }
 
@@ -320,167 +354,202 @@ export default function OnboardingWizard({
 
   return (
     <div className="onboarding-shell">
-      <header>
-        <p>Step {stepIndex + 1} of 6</p>
-        <h1>Build your first personalized ITK newsletter</h1>
-        <div className="progress-bar" aria-hidden="true">
-          <span style={{ width: `${completionPercent}%` }} />
-        </div>
-      </header>
-
-      <section className="onboarding-card">
-        {stepIndex === 0 && (
-          <div className="step-group">
-            <label>
-              Email
-              <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
-            </label>
-            <label>
-              Name
-              <input value={name} onChange={(event) => setName(event.target.value)} required />
-            </label>
-            <label>
-              Full address
-              <input
-                ref={addressInputRef}
-                value={address}
-                onChange={(event) => {
-                  setAddress(event.target.value);
-                  setLat(null);
-                  setLng(null);
-                }}
-                placeholder="Street + city + state"
-                required
+      {finished && (
+        <section className="onboarding-card success-panel">
+          <div className="confetti-rain" aria-hidden="true">
+            {Array.from({ length: 16 }).map((_, index) => (
+              <span
+                key={`confetti-${index}`}
+                style={{ left: `${(index * 13 + 6) % 100}%`, animationDelay: `${index * 90}ms` }}
               />
-            </label>
-            {placesApiKey && (
-              <p className="status-line">
-                {placesReady
-                  ? "Address autocomplete is on. Pick a suggestion to auto-fill city."
-                  : "Loading address autocomplete..."}
-              </p>
+            ))}
+          </div>
+          <p className="eyebrow">You are all set</p>
+          <h2>Welcome to ITK, John.</h2>
+          <p>Your personalized Austin + San Antonio event briefing is now in motion.</p>
+          <Link className="cta-link" href="/">
+            Return to landing page
+          </Link>
+        </section>
+      )}
+
+      {!finished && (
+        <>
+          <header>
+            <p>Step {stepIndex + 1} of 6</p>
+            <h1>Build your first personalized ITK newsletter</h1>
+            <div className="progress-bar" aria-hidden="true">
+              <span style={{ width: `${completionPercent}%` }} />
+            </div>
+          </header>
+
+          <section className="onboarding-card">
+            {stepIndex === 0 && (
+              <div className="step-group">
+                <label>
+                  Email
+                  <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
+                </label>
+                <label>
+                  Name
+                  <input value={name} onChange={(event) => setName(event.target.value)} required />
+                </label>
+                <label>
+                  Full address
+                  <input
+                    ref={addressInputRef}
+                    value={address}
+                    onChange={(event) => {
+                      setAddress(event.target.value);
+                      setLat(null);
+                      setLng(null);
+                    }}
+                    placeholder="Street + city + state"
+                    required
+                  />
+                </label>
+                {placesApiKey && (
+                  <p className="status-line">
+                    {placesReady
+                      ? "Address autocomplete is on. Pick a suggestion to auto-fill city."
+                      : "Loading address autocomplete..."}
+                  </p>
+                )}
+                <label>
+                  City
+                  <input value={city} onChange={(event) => setCity(event.target.value)} required />
+                </label>
+              </div>
             )}
-            <label>
-              City
-              <input value={city} onChange={(event) => setCity(event.target.value)} required />
-            </label>
+
+            {stepIndex === 1 && (
+              <div className="step-group">
+                <h2>What are you into? Word-vomit is perfect.</h2>
+                <p>
+                  Include activities, interests, scenes you like, and anything you want more of in your weekly life.
+                </p>
+                <textarea
+                  rows={8}
+                  value={hobbies}
+                  onChange={(event) => setHobbies(event.target.value)}
+                  placeholder="Ex: live indie music, pottery classes, beginner tennis, volunteering, group hikes, startup meetups"
+                />
+              </div>
+            )}
+
+            {stepIndex === 2 && (
+              <div className="step-group">
+                <h2>What are your goals right now?</h2>
+                <div className="goal-grid">
+                  {goalOptions.map((goal) => (
+                    <button
+                      key={goal}
+                      type="button"
+                      className={goalTypes.includes(goal) ? "goal-chip active" : "goal-chip"}
+                      onClick={() => toggleGoal(goal)}
+                    >
+                      {goal}
+                    </button>
+                  ))}
+                </div>
+                <label>
+                  Anything else you want ITK to optimize for?
+                  <textarea
+                    rows={5}
+                    value={goalText}
+                    onChange={(event) => setGoalText(event.target.value)}
+                    placeholder="Ex: help me meet people who are also into trail running"
+                  />
+                </label>
+              </div>
+            )}
+
+            {stepIndex === 3 && (
+              <div className="step-group">
+                <h2>Set your newsletter preferences</h2>
+                <label>
+                  Concision ({concision >= 50 ? "Detailed" : "Brief"})
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={concision}
+                    onChange={(event) => setConcision(Number(event.target.value))}
+                  />
+                </label>
+                <label>
+                  Event radius ({radius} miles)
+                  <input
+                    type="range"
+                    min={1}
+                    max={75}
+                    value={radius}
+                    onChange={(event) => setRadius(Number(event.target.value))}
+                  />
+                </label>
+                <p>Next step will save your profile to ITK.</p>
+              </div>
+            )}
+
+            {stepIndex === 4 && (
+              <div className="step-group">
+                {busy ? (
+                  <>
+                    <h2>Making ITK smarter...</h2>
+                    <div className="ai-loader" aria-hidden="true">
+                      <span />
+                      <span />
+                      <span />
+                    </div>
+                    <p className="status-line status-active">{processingStages[processingStageIndex] || processingStages[0]}</p>
+                  </>
+                ) : (
+                  <>
+                    <h2>Optional: make ITK smarter</h2>
+                    <p>
+                      Connect accounts so we can avoid schedule conflicts and better match your music/event taste.
+                    </p>
+                    <div className="oauth-grid">
+                      <a href={token ? `/api/auth/google?token=${token}` : "#"} className="oauth-btn">
+                        Connect Google Calendar
+                      </a>
+                      <a href={token ? `/api/auth/spotify?token=${token}` : "#"} className="oauth-btn">
+                        Connect Spotify
+                      </a>
+                    </div>
+                    <p className="status-line">
+                      Google: {googleStatus || "not connected"} | Spotify: {spotifyStatus || "not connected"}
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
+
+            {stepIndex === 5 && (
+              <div className="step-group">
+                <h2>Ready to launch your first issue?</h2>
+                <p>
+                  ITK will curate a weekly email based on your profile, goals, and optional integrations. Keep this onboarding
+                  token for debugging/support:
+                </p>
+                <code>{token || "pending"}</code>
+                <p className="status-line">Click Finish to lock everything in and start receiving your personalized briefings.</p>
+              </div>
+            )}
+          </section>
+
+          {error && <p className="error-banner">{error}</p>}
+
+          <div className="wizard-actions">
+            <button type="button" onClick={back} disabled={stepIndex === 0 || busy}>
+              Back
+            </button>
+            <button type="button" onClick={() => void next()} disabled={busy}>
+              {busy && stepIndex === 4 ? "Processing..." : busy ? "Saving..." : stepIndex === 5 ? "Finish" : "Continue"}
+            </button>
           </div>
-        )}
-
-        {stepIndex === 1 && (
-          <div className="step-group">
-            <h2>What are you into? Word-vomit is perfect.</h2>
-            <p>
-              Include activities, interests, scenes you like, and anything you want more of in your weekly life.
-            </p>
-            <textarea
-              rows={8}
-              value={hobbies}
-              onChange={(event) => setHobbies(event.target.value)}
-              placeholder="Ex: live indie music, pottery classes, beginner tennis, volunteering, group hikes, startup meetups"
-            />
-          </div>
-        )}
-
-        {stepIndex === 2 && (
-          <div className="step-group">
-            <h2>What are your goals right now?</h2>
-            <div className="goal-grid">
-              {goalOptions.map((goal) => (
-                <button
-                  key={goal}
-                  type="button"
-                  className={goalTypes.includes(goal) ? "goal-chip active" : "goal-chip"}
-                  onClick={() => toggleGoal(goal)}
-                >
-                  {goal}
-                </button>
-              ))}
-            </div>
-            <label>
-              Anything else you want ITK to optimize for?
-              <textarea
-                rows={5}
-                value={goalText}
-                onChange={(event) => setGoalText(event.target.value)}
-                placeholder="Ex: help me meet people who are also into trail running"
-              />
-            </label>
-          </div>
-        )}
-
-        {stepIndex === 3 && (
-          <div className="step-group">
-            <h2>Set your newsletter preferences</h2>
-            <label>
-              Concision ({concision >= 50 ? "Detailed" : "Brief"})
-              <input
-                type="range"
-                min={0}
-                max={100}
-                value={concision}
-                onChange={(event) => setConcision(Number(event.target.value))}
-              />
-            </label>
-            <label>
-              Event radius ({radius} miles)
-              <input
-                type="range"
-                min={1}
-                max={75}
-                value={radius}
-                onChange={(event) => setRadius(Number(event.target.value))}
-              />
-            </label>
-            <p>Next step will save your profile to ITK.</p>
-          </div>
-        )}
-
-        {stepIndex === 4 && (
-          <div className="step-group">
-            <h2>Optional: make ITK smarter</h2>
-            <p>
-              Connect accounts so we can avoid schedule conflicts and better match your music/event taste.
-            </p>
-            <div className="oauth-grid">
-              <a href={token ? `/api/auth/google?token=${token}` : "#"} className="oauth-btn">
-                Connect Google Calendar
-              </a>
-              <a href={token ? `/api/auth/spotify?token=${token}` : "#"} className="oauth-btn">
-                Connect Spotify
-              </a>
-            </div>
-            <p className="status-line">
-              Google: {googleStatus || "not connected"} | Spotify: {spotifyStatus || "not connected"}
-            </p>
-          </div>
-        )}
-
-        {stepIndex === 5 && (
-          <div className="step-group">
-            <h2>You are in. Your first issue is being prepared.</h2>
-            <p>
-              ITK will curate a weekly email based on your profile, goals, and optional integrations. Keep this onboarding
-              token for debugging/support:
-            </p>
-            <code>{token || "pending"}</code>
-            <Link className="back-home" href="/">
-              Back to landing page
-            </Link>
-          </div>
-        )}
-      </section>
-
-      {error && <p className="error-banner">{error}</p>}
-
-      <div className="wizard-actions">
-        <button type="button" onClick={back} disabled={stepIndex === 0 || busy}>
-          Back
-        </button>
-        <button type="button" onClick={() => void next()} disabled={busy}>
-          {busy ? "Saving..." : stepIndex === 5 ? "Finish" : "Continue"}
-        </button>
-      </div>
+        </>
+      )}
     </div>
   );
 }

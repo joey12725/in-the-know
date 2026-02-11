@@ -474,6 +474,82 @@ h1 span {
   font-size: 0.92rem;
 }
 
+.status-active {
+  color: var(--ink-900);
+  font-weight: 600;
+}
+
+.ai-loader {
+  display: flex;
+  gap: 0.45rem;
+  align-items: center;
+}
+
+.ai-loader span {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--accent), #f89f45);
+  animation: pulse-dot 900ms ease-in-out infinite;
+}
+
+.ai-loader span:nth-child(2) {
+  animation-delay: 120ms;
+}
+
+.ai-loader span:nth-child(3) {
+  animation-delay: 240ms;
+}
+
+.success-panel {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  gap: 0.9rem;
+  text-align: center;
+  padding: 2.2rem 1.4rem;
+  background:
+    radial-gradient(circle at 12% 20%, rgba(237, 90, 47, 0.16), transparent 36%),
+    radial-gradient(circle at 88% 15%, rgba(128, 212, 183, 0.25), transparent 42%),
+    linear-gradient(180deg, #fffef9 0%, #f4fafb 100%);
+}
+
+.success-panel h2 {
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+}
+
+.success-panel .cta-link {
+  margin-top: 0.4rem;
+}
+
+.confetti-rain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.confetti-rain span {
+  position: absolute;
+  top: -24px;
+  width: 8px;
+  height: 16px;
+  border-radius: 4px;
+  opacity: 0.9;
+  animation: confetti-drop 1800ms linear infinite;
+}
+
+.confetti-rain span:nth-child(3n + 1) {
+  background: #ed5a2f;
+}
+
+.confetti-rain span:nth-child(3n + 2) {
+  background: #7dc7a8;
+}
+
+.confetti-rain span:nth-child(3n) {
+  background: #ffd28c;
+}
+
 .wizard-actions {
   margin-top: 1rem;
   display: flex;
@@ -525,6 +601,32 @@ h1 span {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.58;
+  }
+  50% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+
+@keyframes confetti-drop {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(108%) rotate(230deg);
+    opacity: 0;
   }
 }
 
