@@ -28,7 +28,8 @@ def _build_search_prompt(hobby: str, city: str) -> str:
         f"- price: ticket price or 'Free'\n"
         f"- description: 1-2 sentence description of the event\n"
         f"- url: direct link to event page or tickets\n"
-        f"- category: the category/interest this matches\n\n"
+        f"- category: the category/interest this matches\n"
+        f"- cta: a short call-to-action label for the link button (e.g. 'Get tickets', 'RSVP', 'Learn more', 'Sign up', 'Check it out', 'See menu', 'Register'). Pick what fits the event type.\n\n"
         f"Only include real, verified events. If you cannot find any, return an empty array []."
     )
 
