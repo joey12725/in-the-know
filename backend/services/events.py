@@ -12,12 +12,11 @@ from models import HobbyCityPair
 from services.ai import openrouter_client
 
 
-def _build_search_prompt(hobby: str, city: str, radius_miles: int = 25) -> str:
+def _build_search_prompt(hobby: str, city: str) -> str:
     return (
-        f"List all of the upcoming events in {city.title()} or the surrounding "
-        f"{radius_miles} miles related to {hobby}. Focus especially on ones "
-        f"happening in the next 7 days. Do not include events that have already "
-        f"passed or that are happening in the distant future.\n\n"
+        f"List all of the upcoming events in {city.title()} related to {hobby}. "
+        f"Focus especially on ones happening in the next 7 days. Do not include "
+        f"events that have already passed or that are happening in the distant future.\n\n"
         f"Include all relevant details about each event: name, exact date and time, "
         f"ticket price or if it's free, description of what to expect, full venue "
         f"name and address, and a direct link to tickets or event page.\n\n"
@@ -73,14 +72,14 @@ def _extract_json(text: str) -> list[dict]:
 
 def search_events_for_pair(db: Session, pair: HobbyCityPair) -> list[dict]:
     now = datetime.now(tz=timezone.utc)
-    if pair.last_searched and pair.last_searched > (now - timedelta(days=3)) and pair.cached_results:
+    if pair.last_searched and pair.last_searched > (now - timedelta(days=1)) and pair.cached_results:
         return pair.cached_results
 
     settings = get_settings()
     hobby = pair.hobby_tag.tag_name
     city = pair.city
 
-    prompt = _build_search_prompt(hobby, city, radius_miles=25)
+    prompt = _build_search_prompt(hobby, city)
     result = openrouter_client.search(
         prompt=prompt,
         system_prompt=(
