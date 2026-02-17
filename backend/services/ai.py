@@ -11,7 +11,7 @@ class OpenRouterClient:
     def __init__(self) -> None:
         self.settings = get_settings()
 
-    def _call(self, prompt: str, system_prompt: str, model: str, temperature: float = 0.3, timeout: int = 60) -> str:
+    def _call(self, prompt: str, system_prompt: str, model: str, temperature: float = 0.3, timeout: int = 30) -> str:
         if not self.settings.openrouter_api_key:
             return ""
 
@@ -45,11 +45,11 @@ class OpenRouterClient:
 
     def search(self, prompt: str, system_prompt: str = "You are a helpful assistant.") -> str:
         """Web-grounded search using Perplexity Sonar."""
-        return self._call(prompt, system_prompt, self.settings.openrouter_search_model, timeout=90)
+        return self._call(prompt, system_prompt, self.settings.openrouter_search_model, timeout=55)
 
     def write(self, prompt: str, system_prompt: str = "You are a helpful assistant.", temperature: float = 0.7) -> str:
         """Creative writing using the writing model (GPT-5.2)."""
-        return self._call(prompt, system_prompt, self.settings.openrouter_writing_model, temperature=temperature, timeout=90)
+        return self._call(prompt, system_prompt, self.settings.openrouter_writing_model, temperature=temperature, timeout=55)
 
 
 openrouter_client = OpenRouterClient()

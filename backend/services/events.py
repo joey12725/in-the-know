@@ -81,16 +81,20 @@ def search_events_for_pair(db: Session, pair: HobbyCityPair) -> list[dict]:
     city = pair.city
 
     prompt = _build_search_prompt(hobby, city)
-    result = openrouter_client.search(
-        prompt=prompt,
-        system_prompt=(
-            "You are a local events researcher. Return strict JSON arrays only. "
-            "Only include real, currently-scheduled events with verifiable details. "
-            "If you cannot verify an event exists, do not include it."
-        ),
-    )
-
-    events = _extract_json(result)
+    
+    try:
+        result = openrouter_client.search(
+            prompt=prompt,
+            system_prompt=(
+                "You are a local events researcher. Return strict JSON arrays only. "
+                "Only include real, currently-scheduled events with verifiable details. "
+                "If you cannot verify an event exists, do not include it."
+            ),
+        )
+        events = _extract_json(result)
+    except Exception:
+        # On timeout or error, set empty results and continue
+        events = []
 
     # Tag each event with the hobby that found it
     for event in events:

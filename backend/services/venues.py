@@ -87,15 +87,19 @@ def discover_major_music_venues(db: Session, city: str, force_refresh: bool = Fa
         if newest_search and newest_search > now - timedelta(days=30):
             return 0
 
-    result = openrouter_client.chat(
-        prompt=(
-            f"List major live music venues in {normalized_city.title()}, Texas.\n"
-            "Return strict JSON array of objects with keys: venue_name, address, website.\n"
-            "Keep only established venues with frequent live shows."
-        ),
-        system_prompt="Return strict JSON only.",
-    )
-    parsed_venues = _parse_json_list(result)
+    try:
+        result = openrouter_client.chat(
+            prompt=(
+                f"List major live music venues in {normalized_city.title()}, Texas.\n"
+                "Return strict JSON array of objects with keys: venue_name, address, website.\n"
+                "Keep only established venues with frequent live shows."
+            ),
+            system_prompt="Return strict JSON only.",
+        )
+        parsed_venues = _parse_json_list(result)
+    except Exception:
+        parsed_venues = []
+    
     if not parsed_venues:
         parsed_venues = _fallback_venues(normalized_city)
 
@@ -210,15 +214,19 @@ def search_venue_events_for_city(db: Session, city: str, force_refresh: bool = F
         ):
             continue
 
-        result = openrouter_client.chat(
-            prompt=(
-                f"List upcoming events at {venue.venue_name} in {normalized_city.title()}, Texas for the next 14 days.\n"
-                "Return strict JSON array with keys: name, date, location, price, why, url, category.\n"
-                "If exact data is uncertain, still return best known likely events with concise notes."
-            ),
-            system_prompt="Return strict JSON only.",
-        )
-        parsed_events = _parse_events(result, normalized_city, venue.venue_name)
+        try:
+            result = openrouter_client.chat(
+                prompt=(
+                    f"List upcoming events at {venue.venue_name} in {normalized_city.title()}, Texas for the next 14 days.\n"
+                    "Return strict JSON array with keys: name, date, location, price, why, url, category.\n"
+                    "If exact data is uncertain, still return best known likely events with concise notes."
+                ),
+                system_prompt="Return strict JSON only.",
+            )
+            parsed_events = _parse_events(result, normalized_city, venue.venue_name)
+        except Exception:
+            parsed_events = []
+        
         if not parsed_events:
             parsed_events = _fallback_venue_events(normalized_city, venue.venue_name)
 
