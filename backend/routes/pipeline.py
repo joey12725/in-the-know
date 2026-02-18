@@ -1,11 +1,17 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+import asyncio
+from uuid import UUID
+
+import httpx
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.config import get_settings
 from db.session import get_db
-from pipeline.runner import run_weekly_pipeline
+from models import User
+from pipeline.runner import run_user_pipeline, run_weekly_pipeline
 from schemas.pipeline import (
     DiscoverVenuesRequest,
     DraftEmailsRequest,
@@ -38,6 +44,66 @@ def run_pipeline(
 ) -> dict:
     _check_internal_auth(x_cron_secret, secret)
     return run_weekly_pipeline(db)
+
+
+@router.post("/run-user/{user_id}")
+def run_pipeline_for_user(
+    user_id: UUID,
+    x_cron_secret: str | None = Header(default=None),
+    secret: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Run pipeline for a single user. Completes in <10s."""
+    _check_internal_auth(x_cron_secret, secret)
+    
+    # Verify user exists
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return run_user_pipeline(db, user_id)
+
+
+@router.post("/run-all")
+async def run_pipeline_all_users(
+    request: Request,
+    x_cron_secret: str | None = Header(default=None),
+    secret: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Trigger per-user pipeline runs asynchronously. Fire-and-forget pattern."""
+    _check_internal_auth(x_cron_secret, secret)
+    
+    # Get all users
+    users = db.scalars(select(User)).all()
+    user_ids = [user.id for user in users]
+    
+    # Build the base URL for webhooks
+    base_url = str(request.base_url).rstrip("/")
+    secret_param = x_cron_secret or secret
+    
+    # Fire off async requests (fire-and-forget)
+    async def trigger_user_pipeline(user_id: UUID):
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                url = f"{base_url}/api/pipeline/run-user/{user_id}"
+                headers = {"X-Cron-Secret": secret_param} if secret_param else {}
+                # Fire and forget - we don't await the response
+                await client.post(url, headers=headers)
+        except Exception:
+            # Silently fail - this is fire-and-forget
+            pass
+    
+    # Trigger all user pipelines in the background
+    tasks = [trigger_user_pipeline(user_id) for user_id in user_ids]
+    # Don't await - let them run in background
+    asyncio.create_task(asyncio.gather(*tasks, return_exceptions=True))
+    
+    return {
+        "detail": "Pipeline triggered for all users",
+        "users_triggered": len(user_ids),
+        "user_ids": [str(uid) for uid in user_ids],
+    }
 
 
 @router.post("/parse-hobbies", response_model=PipelineResponse)

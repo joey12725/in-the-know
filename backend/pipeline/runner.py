@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from uuid import UUID
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -8,6 +10,46 @@ from services.email import draft_newsletters, send_newsletters
 from services.events import search_events_for_pairs
 from services.hobbies import parse_and_store_user_hobbies
 from services.venues import discover_pilot_city_venues, search_venue_events
+
+
+def run_user_pipeline(db: Session, user_id: UUID) -> dict:
+    """Run pipeline for a single user. Should complete in <10s."""
+    errors = []
+    parsed_count = 0
+    drafted = 0
+    sent = 0
+    
+    # Parse user hobbies
+    try:
+        tags = parse_and_store_user_hobbies(db, user_id)
+        if tags:
+            parsed_count = 1
+    except Exception as e:
+        errors.append(f"parse_hobbies: {str(e)}")
+    
+    # Draft newsletter
+    try:
+        drafted = draft_newsletters(db, user_id)
+    except Exception as e:
+        errors.append(f"draft_newsletters: {str(e)}")
+    
+    # Send newsletter
+    try:
+        sent = send_newsletters(db, user_id)
+    except Exception as e:
+        errors.append(f"send_newsletters: {str(e)}")
+    
+    result = {
+        "user_id": str(user_id),
+        "parsed_hobbies": parsed_count,
+        "drafted_newsletters": drafted,
+        "sent_newsletters": sent,
+    }
+    
+    if errors:
+        result["errors"] = errors
+    
+    return result
 
 
 def run_weekly_pipeline(db: Session) -> dict:
