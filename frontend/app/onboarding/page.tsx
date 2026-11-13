@@ -1,4 +1,4 @@
-import OnboardingWizard from "@/components/onboarding-wizard";
+import OnboardingWizard from "@/components/onboarding/onboarding-wizard";
 
 type OnboardingPageProps = {
   searchParams: Promise<{

@@ -1,0 +1,14 @@
+[
+  { "input": "Austin", "expected": "austin" },
+  { "input": "  San   Antonio ", "expected": "san antonio" },
+  { "input": "San Antonio, TX", "expected": "san antonio" },
+  { "input": "San Antonio, Texas 78205", "expected": "san antonio" },
+  { "input": "austin tx", "expected": "austin" },
+  { "input": "Austin Texas", "expected": "austin" },
+  { "input": "St. Louis, MO", "expected": "st louis" },
+  { "input": "Kansas City KS", "expected": "kansas city" },
+  { "input": "New York", "expected": "new york" },
+  { "input": "Portland, OR", "expected": "portland" },
+  { "input": "78704 Austin", "expected": "austin" },
+  { "input": "", "expected": "" }
+]

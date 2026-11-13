@@ -597,16 +597,6 @@ h1 span {
   padding: 0.7rem 0.8rem;
 }
 
-.back-home {
-  text-decoration: underline;
-}
-
-.auth-page {
-  max-width: 560px;
-  margin: 4rem auto;
-  text-align: center;
-}
-
 .sr-only {
   position: absolute;
   width: 1px;
@@ -678,4 +668,9 @@ h1 span {
     flex-direction: column;
     gap: 0.5rem;
   }
+}
+
+.oauth-btn[aria-disabled="true"] {
+  opacity: 0.5;
+  pointer-events: none;
 }
