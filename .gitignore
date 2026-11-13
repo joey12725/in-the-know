@@ -1,13 +1,30 @@
-node_modules/
+# Secrets
 .env
-.env.local
+.env.*
+!.env.example
 google_credentials.json
+
+# Python
 __pycache__/
 *.pyc
-.next/
-.vercel/
-venv/
 .venv/
-backend/.venv/
-frontend/.next/
-.vercel
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# Local data
+*.db
+*.sqlite
+.outbox/
+postgres-data/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# Platform
+.vercel/
+.DS_Store
