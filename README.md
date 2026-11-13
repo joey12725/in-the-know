@@ -69,7 +69,7 @@ email is written to `backend/.outbox/` as HTML files.
 Requires [uv](https://docs.astral.sh/uv/) and Node 22+.
 
 ```bash
-git clone https://github.com/joey12725/itk.git && cd itk
+git clone https://github.com/joey12725/in-the-know.git && cd in-the-know
 cp .env.example .env
 make setup        # uv sync + npm ci
 make demo         # SQLite schema, 3 fabricated subscribers, full pipeline run
