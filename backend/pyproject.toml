@@ -1,0 +1,64 @@
+[project]
+name = "itk-backend"
+version = "0.2.0"
+description = "FastAPI backend for ITK (In The Know), a hyper-personalized local events newsletter"
+readme = "../README.md"
+license = "MIT"
+authors = [{ name = "Joey Hersh" }]
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi==0.116.1",
+    "uvicorn[standard]==0.35.0",
+    "sqlalchemy==2.0.43",
+    "psycopg[binary]==3.2.9",
+    "alembic==1.16.4",
+    "pydantic==2.11.7",
+    "pydantic-settings==2.10.1",
+    "httpx==0.28.1",
+    "cryptography==45.0.6",
+    "slowapi==0.1.9",
+    "bleach==6.2.0",
+    "email-validator==2.2.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest==8.4.1",
+    "respx==0.22.0",
+    "ruff==0.12.8",
+    "mypy==1.17.1",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+filterwarnings = ["ignore::DeprecationWarning:slowapi.*", "ignore::DeprecationWarning:starlette.*"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+extend-exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]
+ignore = ["B008"]  # FastAPI's Depends()/Query() defaults are idiomatic
+
+[tool.ruff.lint.isort]
+known-first-party = ["itk"]
+
+[tool.mypy]
+python_version = "3.12"
+packages = ["itk"]
+strict = true
+warn_unused_ignores = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["slowapi.*", "bleach.*"]
+ignore_missing_imports = true
+
+[tool.ruff.lint.per-file-ignores]
+"itk/services/welcome_email.py" = ["E501"]  # long lines inside the HTML email template
