@@ -3,8 +3,8 @@ import Link from "next/link";
 import EmailCaptureForm from "@/components/email-capture-form";
 
 const stats = [
-  { value: "2,000+", label: "locals already using ITK + waitlist members" },
-  { value: "91%", label: "say they discovered events they would have missed" },
+  { value: "1", label: "email a week, written for you and nobody else" },
+  { value: "24h", label: "max age of the event research behind every pick" },
   { value: "2", label: "pilot cities right now: Austin and San Antonio" },
 ];
 
@@ -97,7 +97,7 @@ const sampleEvents = [
 const features = [
   {
     title: "No more default weekends",
-    body: "ITK cuts through 200+ listings and surfaces only events that actually fit your interests and schedule.",
+    body: "ITK cuts through hundreds of listings and surfaces only events that actually fit your interests and schedule.",
   },
   {
     title: "Built around your real life",
@@ -105,7 +105,7 @@ const features = [
   },
   {
     title: "Momentum you can feel",
-    body: "Most members save 2+ hours weekly and finally follow through on the plans they keep talking about.",
+    body: "Skip the hours of scrolling listings and finally follow through on the plans you keep talking about.",
   },
 ];
 
@@ -133,7 +133,7 @@ export default function Home() {
           <div className="hero-card">
             <header>
               <p className="card-kicker">ITK Weekend Preview</p>
-              <h3>For John: your Austin + San Antonio insider lineup</h3>
+              <h3>For Jordan: your Austin + San Antonio insider lineup</h3>
             </header>
             <div className="hero-event-list">
               {heroPreviewEvents.map((event) => (
@@ -201,7 +201,7 @@ export default function Home() {
               <span>ITK Weekly</span>
               <p>Sunday Briefing · Austin + San Antonio</p>
             </div>
-            <span>For John</span>
+            <span>For Jordan</span>
           </header>
           <h3>Your next six plans, already filtered for your vibe</h3>
           <ul className="sample-event-list">
@@ -238,7 +238,7 @@ export default function Home() {
         <p className="eyebrow">Choose better signal</p>
         <h2>Without ITK, great weekends slip by and your city feels smaller than it really is.</h2>
         <p>
-          Join 2,000+ locals building better weekly routines with recommendations tuned to their exact taste and real
+          Join the locals building better weekly routines with recommendations tuned to their exact taste and real
           availability.
         </p>
         <Link className="cta-link" href="/onboarding">
@@ -247,7 +247,7 @@ export default function Home() {
       </section>
 
       <footer className="section footer">
-        <p>itk-so.vercel.app</p>
+        <p>ITK, In The Know</p>
         <p>Built for local curiosity, community, and momentum.</p>
       </footer>
     </main>
